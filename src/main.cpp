@@ -50,15 +50,19 @@ static bool audio_begin() {
 // Default diagnostic UI. Visual lane replaces both weak hooks; single control producer.
 void __attribute__((weak)) mhac_ui_begin() {}
 void __attribute__((weak)) mhac_ui_tick() {
-    // Explicit keyboard gate: 1/2/3 select low/mid/high preset, 0 releases, m mutes.
+    // Explicit keyboard gate: 1/2/3 phase morph, 4/5/6 new modes, 0 releases, m mutes.
     // Bounded work; no serial operations on audio task.
     static uint32_t last=0; static bool sounding=false;
     static unsigned preset=0;
+    auto play=[&] {
+        if(preset<3) mhac::exchange.publish(512+preset*1024,preset*1800,true,false);
+        else mhac::exchange.publish_patch(2300,3400,true,false,static_cast<mhac::Patch>(preset-2));
+    };
     for(unsigned i=0;i<16 && Serial.available();++i) {
         const int c=Serial.read();
-        if(c>='1' && c<='3') {
+        if(c>='1' && c<='6') {
             preset=unsigned(c-'1');
-            mhac::exchange.publish(512+preset*1024, preset*1800,true,false);
+            play();
             sounding=true; last=millis();
         } else if(c=='0' || c=='m') {
             mhac::exchange.publish(512,0,false,c=='m'); sounding=false;
@@ -68,13 +72,13 @@ void __attribute__((weak)) mhac_ui_tick() {
         mhac::exchange.publish(512,0,false,true); sounding=false;
     } else if(sounding) {
         // Renew only while the diagnostic UI is running, never from audio_task.
-        mhac::exchange.publish(512+preset*1024,preset*1800,true,false);
+        play();
     }
 }
 void setup() {
     Serial.begin(115200);
     const bool ready=audio_begin();
-    Serial.println(ready?"MHAC audio initialized; serial 1/2/3, 0, m":"MHAC audio initialization FAILED");
+    Serial.println(ready?"MHAC audio initialized; serial 1-6, 0, m":"MHAC audio initialization FAILED");
     mhac_ui_begin();
 }
 void loop() { mhac_ui_tick(); delay(1); }
