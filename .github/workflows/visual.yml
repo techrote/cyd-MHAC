@@ -31,6 +31,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Native replay and preview
+        shell: bash
         run: |
           mkdir -p receipts
           git rev-parse HEAD > receipts/source-sha.txt
@@ -46,16 +47,18 @@ jobs:
           /tmp/ink_test receipts/ink-field.ppm | tee receipts/ink-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/scale_test.cpp -o /tmp/scale_test
           /tmp/scale_test | tee receipts/scale-test.txt
+          test "$(git hash-object tests/reference/audio_004.hpp)" = afe9c3357850123c1829370176345a9171c40f44
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/extended_test.cpp -o /tmp/extended_test
           /tmp/extended_test | tee receipts/extended-test.txt
           test "$(git hash-object tests/reference/audio_002.hpp)" = 9b17e33ad666d3a152ade642c4e363d3a51cd0ef
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/legacy_compare.cpp -o /tmp/legacy_compare
           /tmp/legacy_compare | tee receipts/legacy-compare.txt
       - name: Target compile
+        shell: bash
         run: |
           python3 -m venv /tmp/pio
           /tmp/pio/bin/pip install platformio==6.1.18
-          /tmp/pio/bin/pio run -c platformio.visual.ini -e cyd-visual
+          /tmp/pio/bin/pio run -c platformio.visual.ini -e cyd-visual | tee receipts/target-build.txt
           cp .pio/build/cyd-visual/firmware.bin receipts/firmware.bin
           (cd receipts && sha256sum firmware.bin > SHA256SUMS)
           echo "Compile candidate only; no flash approval or physical validation." > receipts/STATUS.txt
