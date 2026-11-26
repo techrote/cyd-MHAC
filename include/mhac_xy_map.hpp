@@ -1,8 +1,8 @@
 #pragma once
 #include <algorithm>
 namespace mhac::visual {
-enum class XYMap : unsigned { Direct, Swapped, Fine };
-constexpr unsigned xy_map_count=3;
+enum class XYMap : unsigned { Direct, Swapped, Fine, Lattice };
+constexpr unsigned xy_map_count=4;
 constexpr XYMap nextXYMap(XYMap m) noexcept {
     return static_cast<XYMap>((unsigned(m)+1)%xy_map_count);
 }
@@ -10,6 +10,7 @@ constexpr const char* xyMapName(XYMap m) noexcept {
     switch(m) {
     case XYMap::Swapped: return "Swapped";
     case XYMap::Fine: return "Fine relative";
+    case XYMap::Lattice: return "Note lattice";
     default: return "Direct";
     }
 }

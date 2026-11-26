@@ -5,6 +5,7 @@
 #include "mhac_calibration.hpp"
 #include "mhac_palette.hpp"
 #include "mhac_xy_map.hpp"
+#include "mhac_lattice.hpp"
 #include "mhac_ink.hpp"
 #include "mhac_scale.hpp"
 #include "mhac_trace.hpp"
@@ -74,6 +75,14 @@ public:
         if(audition_) {
             c_.gate=!c_.mute; return;
         }
+        if(mapping_==XYMap::Lattice) {
+            const auto cell=latticeCell(x,y,scale_);
+            raw_x_=c_.x=pitchCoordinate(cell.note);
+            if(count_<2) ++count_;
+            c_.y=count_==1?cell.timbre:(c_.y+cell.timbre*3u+2u)/4u;
+            c_.gate=count_>=2 && !c_.mute;
+            return;
+        }
         const auto point=touchPoint(x,y);
         if(fresh) mapper_.begin(point,{raw_x_,c_.y});
         const auto target=mapper_.target(mapping_,point);
@@ -95,8 +104,13 @@ inline int tri(int v) noexcept { const unsigned u=unsigned(v)&255u; return int(u
 inline uint16_t rgb(int r,int g,int b) noexcept {
     return uint16_t((std::clamp(r,0,255)>>3)<<11 | (std::clamp(g,0,255)>>2)<<5 | (std::clamp(b,0,255)>>3));
 }
-inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
-    const int px=int(f.control.x*319/4095), py=239-int(f.control.y*239/4095);
+inline LatticeCursor frameCursor(const Frame& f) noexcept {
+    if(f.mapping==XYMap::Lattice && !f.factory_audition)
+        return latticeCursor(f.control.x,f.control.y,f.scale);
+    return {int(f.control.x*319/4095),239-int(f.control.y*239/4095)};
+}
+inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcept {
+    const int px=cursor.x, py=cursor.y;
     const int dx=x-px,dy=y-py, t=int(f.tick&255u), a=int((f.analysis&4095u)>>4), ph=int((f.analysis>>16)&255u);
     int v=0,r=0,g=0,b=0;
     if(f.mode==0) { // Resonance: two moving interference centres.
@@ -141,6 +155,11 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
     if(f.mode!=6 && f.palette!=Palette::Original) {
         const auto c=paletteColor(f.palette,r,g,b); r=c.r; g=c.g; b=c.b;
     }
+    if(f.mapping==XYMap::Lattice) {
+        const unsigned mark=latticeMark(x,y,f.scale);
+        if(mark==2) { r=(r+100)/2; g=(g+190)/2; b=(b+210)/2; }
+        if(mark==1) { r=(r+60)/2; g=(g+100)/2; b=(b+130)/2; }
+    }
     const int d2=dx*dx+dy*dy;
     if(d2>=72 && d2<=125) { r=180;g=235;b=225; }
     if(f.control.gate && d2<16) { r=255;g=255;b=255; }
@@ -183,19 +202,21 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
         if(y>=232 && index!=f.palette) return rgb(12,20,28);
         const auto c=paletteSwatch(index); return rgb(c.r,c.g,c.b);
     }
-    // Three aligned mapping bars: Direct, Swapped, Fine relative.
-    if(x>=260 && x<284 && y>=224 && y<236) {
-        const unsigned i=unsigned(x-260)/8;
+    // Four aligned mapping bars: Direct, Swapped, Fine relative, Note lattice.
+    if(x>=256 && x<288 && y>=224 && y<236) {
+        const unsigned i=unsigned(x-256)/8;
         return i==unsigned(f.mapping)?rgb(180,162,240):rgb(65,80,94);
     }
     return rgb(r,g,b);
 }
+inline uint16_t pixel(const Frame& f,int x,int y) noexcept { return pixelAt(f,x,y,frameCursor(f)); }
 // Caller provides exactly width*strip words. Last strip is always full (240/8).
 inline void renderStrip(const Frame& f,int y,unsigned step,uint16_t* out) noexcept {
     step=step==4?4:step==2?2:1;
+    const auto cursor=frameCursor(f);
     for(int j=0;j<strip;j+=int(step)) {
         for(int x=0;x<width;x+=int(step)) {
-            const auto c=pixel(f,x,y+j);
+            const auto c=pixelAt(f,x,y+j,cursor);
             for(unsigned dy=0;dy<step;++dy) for(unsigned dx=0;dx<step;++dx) out[(j+dy)*width+x+dx]=c;
         }
     }

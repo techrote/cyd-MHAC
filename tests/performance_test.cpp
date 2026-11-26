@@ -3,6 +3,7 @@
 #include <array>
 #include <cassert>
 #include <cstdio>
+#include <fstream>
 using namespace mhac::visual;
 static void factoryIntegration() {
     PerformanceSurface ui; uint32_t t=0;
@@ -85,19 +86,69 @@ static void mappingIntegration() {
     assert(ui.control().gate && ui.control().x==lifted.x && ui.control().y==lifted.y);
     ui.expire(t+101);
     assert(ui.control().mute && !ui.control().gate);
-    t+=102; touch(false,0,0); tap(270,230); assert(ui.mapping()==XYMap::Direct && ui.control().mute);
+    t+=102; touch(false,0,0); tap(270,230); assert(ui.mapping()==XYMap::Lattice && ui.control().mute);
+    tap(270,230); assert(ui.mapping()==XYMap::Direct && ui.control().mute);
     Frame f{}; std::array<uint16_t,width*strip> pixels{};
     for(unsigned i=0;i<xy_map_count;++i) for(unsigned q:{1u,2u,4u}) {
         f.mapping=static_cast<XYMap>(i);
         renderStrip(f,224,q,pixels.data());
         for(unsigned k=0;k<xy_map_count;++k)
-            assert(pixels[260+8*k]==(i==k?rgb(180,162,240):rgb(65,80,94)));
+            assert(pixels[256+8*k]==(i==k?rgb(180,162,240):rgb(65,80,94)));
     }
-    std::puts("mapping integration PASS: silent selection, swapped XY, fine re-anchor, stale mute, 27 indicator checks");
+    std::puts("mapping integration PASS: silent selection, swapped XY, fine re-anchor, stale mute, 48 indicator checks");
 }
-int main(){
+static void latticeIntegration(const char* capture) {
+    PerformanceSurface ui; uint32_t t=0;
+    auto touch=[&](bool d,int x,int y){ui.sample(d,x,y,t+=8);};
+    auto tap=[&](int x,int y){touch(true,x,y);touch(false,0,0);};
+    tap(310,10);
+    for(unsigned i=0;i<3;++i) tap(270,230);
+    assert(ui.mapping()==XYMap::Lattice && !ui.control().gate && !ui.control().mute);
+    touch(true,100,120); assert(!ui.control().gate);
+    touch(true,100,120); assert(ui.control().gate && ui.control().x==pitchCoordinate(latticeCell(100,120,Scale::Free).note));
+    touch(true,180,120); assert(ui.control().x==pitchCoordinate(latticeCell(180,120,Scale::Free).note));
+    touch(false,0,0);
+    tap(310,230); tap(310,230);
+    assert(ui.scale()==Scale::MinorPentatonic);
+    touch(true,100,120); touch(true,100,120);
+    const auto start=ui.control();
+    touch(true,100,100);
+    assert(ui.control().gate && ui.control().x==start.x && ui.control().y>start.y);
+    assert(ui.control().x==pitchCoordinate(latticeCell(100,100,ui.scale()).note));
+    mhac::Engine synth; mhac::Exchange io; std::array<int16_t,mhac::block> pcm{};
+    unsigned active=0;
+    for(unsigned i=0;i<64;++i) {
+        touch(true,100,100); publishControl(io,ui.effective(t)); synth.render(io,pcm.data(),pcm.size());
+        for(auto v:pcm) { assert(v>=-8191 && v<=8191); active+=v!=0; }
+    }
+    assert(active && !io.watchdog_trips.load());
+    Frame f{}; f.control=ui.control(); f.scale=ui.scale(); f.mapping=ui.mapping(); f.analysis=io.snapshot(); f.tick=80;
+    auto cursor=frameCursor(f);
+    assert(latticeCell(cursor.x,cursor.y,f.scale).note==latticeCell(100,100,f.scale).note);
+    std::array<uint16_t,width*strip> pixels{};
+    for(unsigned q:{1u,2u,4u}) {
+        renderStrip(f,224,q,pixels.data()); assert(pixels[280]==rgb(180,162,240));
+    }
+    if(capture) {
+        std::ofstream out(capture,std::ios::binary);
+        out<<"P6\n"<<width<<" "<<height<<"\n255\n";
+        for(int y=0;y<height;y+=strip) {
+            renderStrip(f,y,1,pixels.data());
+            for(auto v:pixels) {
+                const unsigned char c[3]={static_cast<unsigned char>(((v>>11)&31u)*255/31),
+                    static_cast<unsigned char>(((v>>5)&63u)*255/63),static_cast<unsigned char>((v&31u)*255/31)};
+                out.write(reinterpret_cast<const char*>(c),3);
+            }
+        }
+        out.close(); assert(out);
+    }
+    ui.observeWatchdog(1); assert(ui.control().mute && !ui.control().gate);
+    std::printf("lattice integration PASS: exact cell pitch, timbre sweep, %u active samples, watchdog mute\n",active);
+}
+int main(int argc,char** argv){
     factoryIntegration();
     mappingIntegration();
+    latticeIntegration(argc>1?argv[1]:nullptr);
     PerformanceSurface ui; mhac::Exchange io; mhac::Engine synth;
     std::array<int16_t,mhac::block> pcm{};
     ui.sample(true,160,10,0); ui.sample(false,0,0,8); assert(ui.loopState()==GestureLoop::State::Idle);

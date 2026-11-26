@@ -6,7 +6,7 @@ Top-left visual; bottom-left sound; bottom-center-left factory bank (16 sounds; 
 bottom-center-right hold factory audition; bottom-right pitch scale.
 Bottom palette strip (x208–255 of 320): Original / Ember / Verdigris / Silver.
 Tap to cycle; release before playing. Trace retains its feature colours.
-Bottom mapping strip (x256–287 of 320): Direct, Swapped, Fine relative.
+Bottom mapping strip (x256–287 of 320): Direct, Swapped, Fine relative, Note lattice.
 Fine relative starts at last sound coordinates; drag at half sensitivity, lift and re-anchor.
 Mapping changes cancel quotation; the ring shows sound coordinates, not the finger in swapped/relative modes.
 A new touch still interrupts gesture quotation as elsewhere on the surface.
@@ -20,3 +20,10 @@ See source-sha.txt, sdl-source-sha.txt and SHA256SUMS.txt.
 SDL2 static dependency: release-2.32.10 (5d249570393f7a37e037abf22cd6012a4cc56a71).
 SDL license and inherited Diviner notice retained. No repository-wide
 license or hardware flash approval is implied.
+
+Fourth XY mapping: Note lattice. Tap the mapping selector three times from Direct.
+Each of three horizontal octave rows has 12 note cells (Free or Chromatic) or
+5 (Minor pentatonic). Move horizontally to change notes, vertically within a
+row to sweep timbre. Crossing an octave row changes octave and resets local
+vertical position. The Free scale is chromatic in this mapping only. Other
+mappings retain their normal scale behavior; factory audition bypasses mapping.

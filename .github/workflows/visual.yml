@@ -8,6 +8,8 @@ on:
       - 'include/mhac_visual.hpp'
       - 'include/mhac_palette.hpp'
       - 'include/mhac_xy_map.hpp'
+      - 'include/mhac_lattice.hpp'
+      - 'tests/lattice_test.cpp'
       - 'tests/xy_map_test.cpp'
       - 'tests/palette_test.cpp'
       - 'include/mhac_visual_patch.hpp'
@@ -63,6 +65,8 @@ jobs:
           /tmp/palette_test | tee receipts/palette-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/xy_map_test.cpp -o /tmp/xy_map_test
           /tmp/xy_map_test | tee receipts/xy-map-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/lattice_test.cpp -o /tmp/lattice_test
+          /tmp/lattice_test | tee receipts/lattice-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/calibration_test.cpp -o /tmp/calibration_test
           /tmp/calibration_test | tee receipts/calibration-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/chime_ui_test.cpp -o /tmp/chime_ui_test
@@ -72,7 +76,7 @@ jobs:
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/gesture_test.cpp -o /tmp/gesture_test
           /tmp/gesture_test | tee receipts/gesture-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/performance_test.cpp -o /tmp/performance_test
-          /tmp/performance_test | tee receipts/performance-test.txt
+          /tmp/performance_test receipts/lattice.ppm | tee receipts/performance-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/factory_ui_test.cpp -o /tmp/factory_ui_test
           /tmp/factory_ui_test | tee receipts/factory-ui-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/trace_test.cpp -o /tmp/trace_test
