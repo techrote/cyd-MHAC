@@ -72,7 +72,7 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
     if(f.control.gate && d2<16) { r=255;g=255;b=255; }
     // Tiny controls, visible without covering the performance surface.
     if(x<24 && y<24 && (x==4||x==19||y==4||y==19) && x>=4&&x<=19&&y>=4&&y<=19) return rgb(130,180,210);
-    if(x>=296 && y<24 && x>=301&&x<=314&&y>=5&&y<=18 && (x==301||x==314||y==5||y==18|| (f.control.mute&&x-301==y-5))) return f.control.mute?rgb(255,72,48):rgb(64,220,150);
+    if(x>=296 && y<24 && x>=300&&x<=315&&y>=4&&y<=19 && (x<304||x>=312||y<8||y>=16|| (f.control.mute&&std::abs((x-300)-(y-4))<=2))) return f.control.mute?rgb(255,72,48):rgb(64,220,150);
     return rgb(r,g,b);
 }
 // Caller provides exactly width*strip words. Last strip is always full (240/8).
