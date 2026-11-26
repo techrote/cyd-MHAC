@@ -6,6 +6,7 @@ on:
       - 'include/mhac_*.hpp'
       - 'src/main.cpp'
       - 'tests/audio_test.cpp'
+      - 'tests/dac_test.cpp'
       - 'tests/patch_test.cpp'
       - 'tests/extended_test.cpp'
       - 'tests/modal_test.cpp'
@@ -43,6 +44,8 @@ jobs:
           test "$(git hash-object tests/reference/audio_002.hpp)" = 9b17e33ad666d3a152ade642c4e363d3a51cd0ef
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -pthread -Iinclude tests/audio_test.cpp -o /tmp/audio_test
           /tmp/audio_test | tee receipts/audio-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/dac_test.cpp -o /tmp/dac_test
+          /tmp/dac_test | tee receipts/dac-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/patch_test.cpp -o /tmp/patch_test
           /tmp/patch_test | tee receipts/patch-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/legacy_compare.cpp -o /tmp/legacy_compare

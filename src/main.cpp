@@ -2,6 +2,7 @@
 #include <driver/i2s.h>
 #include <esp_timer.h>
 #include "mhac_platform.hpp"
+#include "mhac_dac.hpp"
 #include "mhac_performance_presets.hpp"
 #include <Preferences.h>
 static_assert(mhac::extended_patch_count>=mhac::preset_catalog_v1,"preset catalogue requires patch IDs 0-5");
@@ -17,12 +18,19 @@ static void audio_task(void*) {
     int16_t samples[mhac::block];
     uint16_t slots[mhac::block*2];
     mhac::TimingMeter timing(mhac::audio_block_budget_us);
+#ifndef MHAC_DAC_LEGACY_FLOOR
+    mhac::DacQuantizer dac;
+#endif
     for (;;) {
         const auto start=uint32_t(esp_timer_get_time());
         engine.render(mhac::exchange,samples,mhac::block);
         const auto rendered=uint32_t(esp_timer_get_time());
         for(unsigned i=0;i<mhac::block;++i) {
-            const auto u=uint16_t((int32_t(samples[i])+32768)&0xff00);
+#ifdef MHAC_DAC_LEGACY_FLOOR
+            const auto u=mhac::dac_floor(samples[i]);
+#else
+            const auto u=dac.pack(samples[i]);
+#endif
             slots[i*2]=slots[i*2+1]=u;
         }
         size_t written=0;
