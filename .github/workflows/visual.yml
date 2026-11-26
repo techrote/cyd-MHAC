@@ -4,6 +4,9 @@ on:
     branches: [audio/cyd-audio-001, main]
     paths:
       - 'include/mhac_visual.hpp'
+      - 'include/mhac_scale.hpp'
+      - 'tests/scale_test.cpp'
+      - 'tests/extended_test.cpp'
       - 'include/mhac_ink.hpp'
       - 'tests/ink_test.cpp'
       - 'tests/legacy_compare.cpp'
@@ -36,11 +39,15 @@ jobs:
           mkdir -p receipts/five-modes
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_002_test.cpp -o /tmp/visual_002_test
           /tmp/visual_002_test receipts/five-modes | tee receipts/host-visual-002.txt
-          mkdir -p receipts/four-pairs
+          mkdir -p receipts/six-pairs
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_003_test.cpp -o /tmp/visual_003_test
-          /tmp/visual_003_test receipts/four-pairs | tee receipts/host-visual-003.txt
+          /tmp/visual_003_test receipts/six-pairs | tee receipts/host-visual-003.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/ink_test.cpp -o /tmp/ink_test
           /tmp/ink_test receipts/ink-field.ppm | tee receipts/ink-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/scale_test.cpp -o /tmp/scale_test
+          /tmp/scale_test | tee receipts/scale-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/extended_test.cpp -o /tmp/extended_test
+          /tmp/extended_test | tee receipts/extended-test.txt
           test "$(git hash-object tests/reference/audio_002.hpp)" = 9b17e33ad666d3a152ade642c4e363d3a51cd0ef
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/legacy_compare.cpp -o /tmp/legacy_compare
           /tmp/legacy_compare | tee receipts/legacy-compare.txt

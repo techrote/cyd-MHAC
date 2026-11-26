@@ -50,7 +50,7 @@ void mhac_ui_tick() {
     if(!ui.control().gate || ui.mode()!=5) ink.disconnect();
     if(row==0) {
         frameStart=micros(); maxStripUs=0;
-        frame={ui.control(),ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched(),&ink};
+        frame={ui.control(),ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched(),&ink,ui.scale()};
         if(frame.mode==5) ink.advance(now,frame.control.x,frame.control.y,frame.control.gate&&!frame.control.mute,frame.analysis&4095u);
     }
     const uint32_t start=micros();

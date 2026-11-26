@@ -3,10 +3,11 @@
 #include <cstdint>
 #include <cstdlib>
 #include "mhac_ink.hpp"
+#include "mhac_scale.hpp"
 namespace mhac::visual {
 constexpr int width=320, height=240, strip=8;
-constexpr unsigned mode_count=6, sound_count=4;
-constexpr unsigned paired_mode[sound_count]={0,1,4,3};
+constexpr unsigned mode_count=6, sound_count=6;
+constexpr unsigned paired_mode[sound_count]={0,1,4,3,2,5};
 struct Control { unsigned x=2048,y=2048; bool gate=false,mute=true; unsigned patch=0; };
 struct Calibration {
     int left=200,right=3900,top=3900,bottom=200;
@@ -21,9 +22,11 @@ struct Calibration {
 class Surface {
     Control c_{}; unsigned mode_=0, count_=0; bool held_=false, blocked_=false;
     uint32_t last_=0, trips_=0; bool watchdog_=false;
+    Scale scale_=Scale::Free; unsigned raw_x_=2048;
 public:
     Control control() const noexcept { return c_; }
     unsigned mode() const noexcept { return mode_; }
+    Scale scale() const noexcept { return scale_; }
     bool watchdogLatched() const noexcept { return watchdog_; }
     void observeWatchdog(uint32_t trips) noexcept {
         if(trips!=trips_) { trips_=trips; watchdog_=true; forceMute(); }
@@ -46,15 +49,20 @@ public:
             c_.patch=(c_.patch+1)%sound_count; mode_=paired_mode[c_.patch];
             c_.gate=false; blocked_=true; return;
         }
+        if(fresh && x>=width-24 && y>=height-24) {
+            scale_=static_cast<Scale>((unsigned(scale_)+1)%scale_count);
+            c_.x=mapPitch(raw_x_,scale_); c_.gate=false; blocked_=true; return;
+        }
         if(count_<2) ++count_;
         const unsigned tx=unsigned(x)*4095/(width-1), ty=unsigned(height-1-y)*4095/(height-1);
-        if(count_==1) { c_.x=tx; c_.y=ty; }
-        else { c_.x=(c_.x+tx*3+2)/4; c_.y=(c_.y+ty*3+2)/4; }
+        if(count_==1) { raw_x_=tx; c_.y=ty; }
+        else { raw_x_=(raw_x_+tx*3+2)/4; c_.y=(c_.y+ty*3+2)/4; }
+        c_.x=mapPitch(raw_x_,scale_);
         c_.gate=count_>=2 && !c_.mute;
     }
 };
 struct Frame {
-    Control control{}; unsigned mode=0; uint32_t analysis=0, tick=0; bool watchdog=false; const InkField* ink=nullptr;
+    Control control{}; unsigned mode=0; uint32_t analysis=0, tick=0; bool watchdog=false; const InkField* ink=nullptr; Scale scale=Scale::Free;
 };
 inline int tri(int v) noexcept { const unsigned u=unsigned(v)&255u; return int(u<128?u*2:(255-u)*2); }
 inline uint16_t rgb(int r,int g,int b) noexcept {
@@ -102,10 +110,17 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
     // Tiny controls, visible without covering the performance surface.
     if(x<24 && y<24 && (x==4||x==19||y==4||y==19) && x>=4&&x<=19&&y>=4&&y<=19) return rgb(130,180,210);
     if(x>=296 && y<24 && x>=300&&x<=315&&y>=4&&y<=19 && (x<304||x>=312||y<8||y>=16|| (f.control.mute&&std::abs((x-300)-(y-4))<=2))) return f.control.mute?(f.watchdog?rgb(255,184,32):rgb(255,72,48)):rgb(64,220,150);
-    // Four aligned bars: legible at 1x, 2x and 4x shading, no extra buffer.
-    if(x<24 && y>=height-24 && x>=4 && x<20 && y>=220 && y<236) {
-        const unsigned index=unsigned(x-4)/4;
+    // Six aligned bars, plus three pitch-map indicators. Visible at 4x shading.
+    if(x<24 && y>=220 && y<236) {
+        const unsigned index=unsigned(x)/4;
+        if(x%4==3) return rgb(12,20,28);
         if(y>=228 || index==f.control.patch) return index==f.control.patch?rgb(238,220,128):rgb(65,80,94);
+        return rgb(12,20,28);
+    }
+    if(x>=296 && y>=220 && y<236) {
+        const unsigned index=unsigned(x-296)/8;
+        if(x%8>=6) return rgb(12,20,28);
+        if(y>=228 || index==unsigned(f.scale)) return index==unsigned(f.scale)?rgb(116,210,240):rgb(65,80,94);
         return rgb(12,20,28);
     }
     return rgb(r,g,b);

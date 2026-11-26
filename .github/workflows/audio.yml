@@ -7,6 +7,7 @@ on:
       - 'src/main.cpp'
       - 'tests/audio_test.cpp'
       - 'tests/patch_test.cpp'
+      - 'tests/extended_test.cpp'
       - 'tests/legacy_compare.cpp'
       - 'tests/reference/**'
       - 'platformio.ini'
@@ -35,6 +36,9 @@ jobs:
           /tmp/patch_test | tee receipts/patch-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/legacy_compare.cpp -o /tmp/legacy_compare
           /tmp/legacy_compare | tee receipts/legacy-compare.txt
+          test "$(git hash-object tests/reference/audio_004.hpp)" = afe9c3357850123c1829370176345a9171c40f44
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/extended_test.cpp -o /tmp/extended_test
+          /tmp/extended_test | tee receipts/extended-test.txt
       - name: Target compile
         shell: bash
         run: |
