@@ -2,7 +2,8 @@
 #include <driver/i2s.h>
 #include <esp_timer.h>
 #include "mhac_platform.hpp"
-#include "mhac_presets.hpp"
+#include "mhac_preset_store.hpp"
+#include <Preferences.h>
 static_assert(mhac::extended_patch_count>=mhac::preset_catalog_v1,"preset catalogue requires patch IDs 0-5");
 
 namespace mhac {
@@ -58,15 +59,37 @@ static bool audio_begin() {
     i2s_driver_uninstall(port);
     return false;
 }
+// Explicit UI-thread NVS operations only; no storage call in audio_task.
+// Keep namespace/key stable. Do not erase existing NVS or migrate other data.
+struct NvsSoundBackend {
+    bool read(mhac::PresetRecord& out) {
+        Preferences prefs;
+        if(!prefs.begin("mhac-audio",true)) return false;
+        mhac::PresetRecord b{};
+        const bool ok=prefs.getBytesLength("sound-v1")==b.size() &&
+                      prefs.getBytes("sound-v1",b.data(),b.size())==b.size();
+        prefs.end();
+        if(ok) out=b;
+        return ok;
+    }
+    bool write(const mhac::PresetRecord& b) {
+        Preferences prefs;
+        if(!prefs.begin("mhac-audio",false)) return false;
+        const bool ok=prefs.putBytes("sound-v1",b.data(),b.size())==b.size();
+        prefs.end();
+        return ok;
+    }
+};
 // Default diagnostic UI. Visual lane replaces both weak hooks; single control producer.
 void __attribute__((weak)) mhac_ui_begin() {}
 void __attribute__((weak)) mhac_ui_tick() {
     // Explicit keyboard gate: 1/2/3 phase morph, 4–8 other modes, 0 releases, m mutes.
     // Bounded work; no serial operations on audio task.
-    static uint32_t last=0; static bool sounding=false;
+    static uint32_t last=0, quiet_since=millis();
+    static bool sounding=false, muted=true;
     static mhac::SoundPreset preset{0,512,0};
     auto selected=[&] { return static_cast<mhac::Patch>(preset.patch); };
-    auto play=[&] { mhac::exchange.publish_patch(preset.x,preset.y,true,false,selected()); };
+    auto play=[&] { muted=false; mhac::exchange.publish_patch(preset.x,preset.y,true,false,selected()); };
     for(unsigned i=0;i<16 && Serial.available();++i) {
         const int c=Serial.read();
         if(c>='1' && c<='8') {
@@ -78,6 +101,16 @@ void __attribute__((weak)) mhac_ui_tick() {
         } else if(c>='A' && c<='L') {
             preset=mhac::factory_presets[unsigned(c-'A')].sound;
             play(); sounding=true; last=millis();
+        } else if(c=='p') {
+            play(); sounding=true; last=millis();
+        } else if(c=='s' || c=='r') {
+            if(!mhac::storage_allowed(muted,sounding,millis(),quiet_since)) {
+                Serial.println("storage blocked; mute and wait at least 250 ms");
+            } else {
+                NvsSoundBackend backend;
+                const auto status=c=='s'?mhac::save_sound(backend,preset):mhac::recall_sound(backend,preset);
+                Serial.printf("preset %s: %s\n",c=='s'?"save":"recall",mhac::store_result_name(status));
+            }
         } else if(c=='d') {
             mhac::AudioTiming t{};
             if(mhac::audio_timing.read(t)) {
@@ -88,11 +121,12 @@ void __attribute__((weak)) mhac_ui_tick() {
                     (unsigned long)t.max_write_us,(unsigned long)t.max_start_gap_us);
             } else Serial.println("timing unavailable; retry");
         } else if(c=='0' || c=='m') {
-            mhac::exchange.publish_patch(512,0,false,c=='m',selected()); sounding=false;
+            muted=c=='m';
+            mhac::exchange.publish_patch(512,0,false,muted,selected()); sounding=false; quiet_since=millis();
         }
     }
     if(sounding && uint32_t(millis()-last)>=2000) {
-        mhac::exchange.publish_patch(512,0,false,true,selected()); sounding=false;
+        mhac::exchange.publish_patch(512,0,false,true,selected()); sounding=false; muted=true; quiet_since=millis();
     } else if(sounding) {
         // Renew only while the diagnostic UI is running, never from audio_task.
         play();
@@ -101,7 +135,7 @@ void __attribute__((weak)) mhac_ui_tick() {
 void setup() {
     Serial.begin(115200);
     const bool ready=audio_begin();
-    Serial.println(ready?"MHAC audio initialized; serial 1-8, A-L, 0, m, d":"MHAC audio initialization FAILED");
+    Serial.println(ready?"MHAC audio initialized; serial 1-8, A-L, p, 0, m, d, s, r":"MHAC audio initialization FAILED");
     mhac_ui_begin();
 }
 void loop() { mhac_ui_tick(); delay(1); }
