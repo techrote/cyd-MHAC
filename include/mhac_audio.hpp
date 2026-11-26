@@ -134,7 +134,8 @@ public:
                 wet=a*(1.f-mix)+delayed*mix;
             } else { echo_pos_=0; echo_valid_=0; }
             float modal=0.f;
-            if(weights_[modal_patch_index] && env_>0.f) {
+            // Modal strikes have their own finite decay, independent of ordinary gate release.
+            if(weights_[modal_patch_index] && (active || modal_used_)) {
                 const bool inhibit=(c&(1u<<25)) || (requested && !active) || patch!=modal_patch_index;
                 modal=modal_.sample(step,morph_,active && patch==modal_patch_index,sine,inhibit);
                 modal_used_=true;
@@ -156,10 +157,12 @@ public:
                 }
                 if(weights_[4]) sound+=float(weights_[4])*rhythm;
                 if(weights_[5]) sound+=float(weights_[5])*wet;
-                if(weights_[modal_patch_index]) sound+=float(weights_[modal_patch_index])*modal;
                 sound*=1.f/256.f;
             }
-            const int v=int(8191.f*env_*sound);
+            // Preserve the exact legacy arithmetic when no modal contribution is mixed.
+            const int v=weights_[modal_patch_index]
+                ? int(8191.f*(env_*sound+modal*(float(weights_[modal_patch_index])/256.f)))
+                : int(8191.f*env_*sound);
             out[i]=int16_t(v); peak=std::max(peak,unsigned(v<0?-v:v));
             features_.push(out[i],io.features);
         }

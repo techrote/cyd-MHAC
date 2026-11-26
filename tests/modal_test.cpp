@@ -6,7 +6,7 @@
 #include <algorithm>
 using namespace mhac;
 static std::vector<int16_t> render(unsigned x,unsigned y,bool split,bool retrigger) {
-    Exchange io; Engine e; std::vector<int16_t> v(rate*3);
+    Exchange io; Engine e; std::vector<int16_t> v(rate*5);
     for(unsigned k=0;k<v.size();k+=block) {
         const unsigned n=std::min<unsigned>(block,v.size()-k);
         const bool gate=k<rate*2 && (!retrigger || k<rate/2 || k>=rate);
@@ -15,7 +15,7 @@ static std::vector<int16_t> render(unsigned x,unsigned y,bool split,bool retrigg
         else e.render(io,v.data()+k,n);
     }
     for(auto s:v) assert(s>=-8191 && s<=8191);
-    for(unsigned i=rate*2+6000;i<v.size();++i) assert(v[i]==0);
+    for(unsigned i=rate*4+6000;i<v.size();++i) assert(v[i]==0);
     assert(io.watchdog_trips.load()==0);
     return v;
 }
@@ -61,7 +61,33 @@ static void overlap_test() {
         assert(steal.sample(lo,.2f,true,sine)==clean.sample(lo,.2f,true,sine));
     std::printf("PASS two-voice pitch lock/additivity (1024 samples), 12000 stealing continuity samples, inhibit/rearm; tail energy %.3f new %.3f\n",tail_energy,new_energy);
 }
+// A released strike must ring without contact, but mute/watchdog/deselection
+// must not turn a safety-damped tail back into a normal decay.
+static void independent_release_test() {
+    Exchange io; Engine e; std::array<int16_t,block> a{};
+    auto tick=[&](bool gate,bool mute) {
+        io.publish_modal(0,0,gate,mute); e.render(io,a.data(),block);
+        uint64_t sum=0; for(auto s:a) sum+=int64_t(s)*s; return sum;
+    };
+    for(unsigned k=0;k<8;++k) tick(true,false);
+    uint64_t late=0;
+    for(unsigned k=0;k<64;++k) { auto v=tick(false,false); if(k>=48) late+=v; }
+    assert(late>100000u); // 256–341 ms after lift, not a global gate fade.
+    tick(false,true);
+    for(unsigned k=0;k<16;++k) tick(false,false);
+    assert(tick(false,false)==0); // a single mute block permanently damps this strike
+    for(unsigned k=0;k<32;++k) assert(tick(false,false)==0);
+    assert(tick(true,false)>0);
+    // A stale held gate must not ring indefinitely or rearm on a heartbeat alone.
+    for(unsigned k=0;k<120;++k) e.render(io,a.data(),block);
+    assert(io.watchdog_trips.load()==1);
+    assert(tick(true,false)==0);
+    assert(tick(false,false)==0);
+    assert(tick(true,false)>0);
+    std::printf("PASS independent release, latched safety damping, lease expiry and fresh strike; late energy %llu\n",static_cast<unsigned long long>(late));
+}
 int main(int argc,char** argv) {
+    independent_release_test();
     overlap_test();
     unsigned count=0;
     for(unsigned x:{0u,2048u,4095u}) for(unsigned y:{0u,2048u,4095u}) {

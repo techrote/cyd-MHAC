@@ -12,12 +12,14 @@ class ModalChime {
         uint32_t step=0;
         float brightness=0.f;
         unsigned excite=0;
+        bool damped=false; // Safety damping is sticky until a fresh strike.
         bool quiet() const noexcept { return amplitude[0]==0.f && excite==0; }
         void start(uint32_t s,float b) noexcept {
             *this=Voice{}; step=s; brightness=b; excite=64;
         }
         template<class Sine>
         float sample(bool inhibit,float fade,Sine sine) noexcept {
+            if(inhibit) { damped=true; excite=0; }
             if(quiet()) return 0.f;
             constexpr float ratios[4]={1.f,2.01f,3.97f,5.43f};
             float modes[4];
@@ -25,7 +27,7 @@ class ModalChime {
                 phase[j]+=uint32_t(float(step)*ratios[j]);
                 float& a=amplitude[j];
                 if(excite) a+=(1.f-a)*.06f;
-                else a*=1.f-(inhibit?.02f:(.00014f+.00018f*brightness)*float(j+1));
+                else a*=1.f-(damped?.02f:(.00014f+.00018f*brightness)*float(j+1));
                 a*=fade;
                 if(a<.00001f) a=0.f;
                 modes[j]=a*sine(phase[j]);
