@@ -1,12 +1,17 @@
 #pragma once
-#include "mhac_presets.hpp"
+#include "mhac_performance_presets.hpp"
 namespace mhac::visual {
-constexpr unsigned factory_count=unsigned(mhac::factory_presets.size());
-static_assert(factory_count==12,"factory UI layout requires 12 entries");
+constexpr unsigned legacy_factory_count=unsigned(mhac::factory_presets.size());
+constexpr unsigned factory_count=legacy_factory_count+unsigned(mhac::modal_presets.size());
+static_assert(legacy_factory_count==12 && factory_count==16,"factory UI layout requires 12+4 entries");
+constexpr const mhac::NamedPreset& factoryEntry(unsigned index) noexcept {
+    return index<legacy_factory_count?mhac::factory_presets[index]:
+        index<factory_count?mhac::modal_presets[index-legacy_factory_count]:mhac::factory_presets[0];
+}
 enum class FactoryAction { None, Select, Audition };
 constexpr FactoryAction factoryAction(int x,int y) noexcept {
     if(y<216 || y>=240) return FactoryAction::None;
-    if(x>=104 && x<160) return FactoryAction::Select;
+    if(x>=88 && x<160) return FactoryAction::Select;
     if(x>=168 && x<192) return FactoryAction::Audition;
     return FactoryAction::None;
 }
@@ -16,9 +21,7 @@ public:
     unsigned index() const noexcept { return index_; }
     void next() noexcept { index_=index_==factory_count?0:(index_+1)%factory_count; }
     void ensure() noexcept { if(index_==factory_count) index_=0; }
-    const mhac::NamedPreset& entry() const noexcept {
-        return mhac::factory_presets[index_<factory_count?index_:0];
-    }
+    const mhac::NamedPreset& entry() const noexcept { return factoryEntry(index_); }
     template<class C> void load(C& c) const noexcept {
         const auto p=entry().sound;
         c.patch=p.patch; c.x=p.x; c.y=p.y; c.gate=false;

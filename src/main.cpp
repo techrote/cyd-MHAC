@@ -2,7 +2,7 @@
 #include <driver/i2s.h>
 #include <esp_timer.h>
 #include "mhac_platform.hpp"
-#include "mhac_preset_store.hpp"
+#include "mhac_performance_presets.hpp"
 #include <Preferences.h>
 static_assert(mhac::extended_patch_count>=mhac::preset_catalog_v1,"preset catalogue requires patch IDs 0-5");
 
@@ -62,12 +62,13 @@ static bool audio_begin() {
 // Explicit UI-thread NVS operations only; no storage call in audio_task.
 // Keep namespace/key stable. Do not erase existing NVS or migrate other data.
 struct NvsSoundBackend {
+    const char* key="sound-v1";
     bool read(mhac::PresetRecord& out) {
         Preferences prefs;
         if(!prefs.begin("mhac-audio",true)) return false;
         mhac::PresetRecord b{};
-        const bool ok=prefs.getBytesLength("sound-v1")==b.size() &&
-                      prefs.getBytes("sound-v1",b.data(),b.size())==b.size();
+        const bool ok=prefs.getBytesLength(key)==b.size() &&
+                      prefs.getBytes(key,b.data(),b.size())==b.size();
         prefs.end();
         if(ok) out=b;
         return ok;
@@ -75,7 +76,7 @@ struct NvsSoundBackend {
     bool write(const mhac::PresetRecord& b) {
         Preferences prefs;
         if(!prefs.begin("mhac-audio",false)) return false;
-        const bool ok=prefs.putBytes("sound-v1",b.data(),b.size())==b.size();
+        const bool ok=prefs.putBytes(key,b.data(),b.size())==b.size();
         prefs.end();
         return ok;
     }
@@ -103,21 +104,27 @@ void __attribute__((weak)) mhac_ui_tick() {
             play();
             sounding=true; last=millis();
         } else if(c=='9') {
-            // Explicit opt-in v3 sound; the v1 preset record deliberately rejects ID 6.
+            // Explicit opt-in v3 sound; use S/R for the extended preset slot.
             preset=mhac::SoundPreset{uint8_t(mhac::modal_patch_index),2048,3400};
             play(); sounding=true; last=millis();
         } else if(c>='A' && c<='L') {
             preset=mhac::factory_presets[unsigned(c-'A')].sound;
             play(); sounding=true; last=millis();
+        } else if(c>='M' && c<='P') {
+            preset=mhac::modal_presets[unsigned(c-'M')].sound;
+            play(); sounding=true; last=millis();
         } else if(c=='p') {
             play(); sounding=true; last=millis();
-        } else if(c=='s' || c=='r') {
+        } else if(c=='s' || c=='r' || c=='S' || c=='R') {
             if(!mhac::storage_allowed(muted,sounding,millis(),quiet_since)) {
                 Serial.println("storage blocked; mute and wait at least 250 ms");
             } else {
-                NvsSoundBackend backend;
-                const auto status=c=='s'?mhac::save_sound(backend,preset):mhac::recall_sound(backend,preset);
-                Serial.printf("preset %s: %s\n",c=='s'?"save":"recall",mhac::store_result_name(status));
+                const bool extended=c=='S' || c=='R', save=c=='s' || c=='S';
+                NvsSoundBackend backend{extended?"sound-v2":"sound-v1"};
+                const auto status=extended
+                    ? (save?mhac::save_performance_sound(backend,preset):mhac::recall_performance_sound(backend,preset))
+                    : (save?mhac::save_sound(backend,preset):mhac::recall_sound(backend,preset));
+                Serial.printf("preset %s %s: %s\n",extended?"extended":"legacy",save?"save":"recall",mhac::store_result_name(status));
             }
         } else if(c=='d') {
             mhac::AudioTiming t{};
@@ -143,7 +150,7 @@ void __attribute__((weak)) mhac_ui_tick() {
 void setup() {
     Serial.begin(115200);
     const bool ready=audio_begin();
-    Serial.println(ready?"MHAC audio initialized; serial 1-9, A-L, p, 0, m, d, s, r":"MHAC audio initialization FAILED");
+    Serial.println(ready?"MHAC audio initialized; serial 1-9, A-P, p, 0, m, d, s/r legacy, S/R extended":"MHAC audio initialization FAILED");
     mhac_ui_begin();
 }
 void loop() { mhac_ui_tick(); delay(1); }

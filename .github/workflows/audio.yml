@@ -14,6 +14,7 @@ on:
       - 'tests/timing_test.cpp'
       - 'tests/preset_test.cpp'
       - 'tests/preset_store_test.cpp'
+      - 'tests/performance_preset_test.cpp'
       - 'tests/legacy_compare.cpp'
       - 'tests/reference/**'
       - 'tools/audio/**'
@@ -60,6 +61,8 @@ jobs:
           /tmp/preset_test | tee receipts/preset-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/preset_store_test.cpp -o /tmp/preset_store_test
           /tmp/preset_store_test | tee receipts/preset-store-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/performance_preset_test.cpp -o /tmp/performance_preset_test
+          /tmp/performance_preset_test | tee receipts/performance-preset-test.txt
       - name: Target compile
         shell: bash
         run: |

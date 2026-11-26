@@ -10,9 +10,9 @@ static void factoryIntegration() {
     assert(ui.factoryIndex()==factory_count);
     for(unsigned i=0;i<factory_count;++i) {
         touch(true,120,230); touch(true,220,80); touch(false,0,0);
-        const auto p=mhac::factory_presets[i].sound;
+        const auto p=factoryEntry(i).sound;
         const auto c=ui.control();
-        assert(ui.factoryIndex()==i && c.patch==p.patch && c.x==p.x && c.y==p.y && c.mute && !c.gate);
+        assert(ui.factoryIndex()==i && c.patch==p.patch && c.x==p.x && c.y==p.y && c.mute && !c.gate && ui.mode()==paired_mode[p.patch]);
         touch(true,180,230); touch(true,200,80);
         assert(!ui.control().gate && !ui.factoryAudition());
         touch(false,0,0);
@@ -25,7 +25,7 @@ static void factoryIntegration() {
         assert(ui.loopState()==GestureLoop::State::Idle && ui.factoryIndex()==i && !ui.control().gate);
         touch(true,180,230); assert(!ui.control().gate);
         touch(true,220,120); assert(ui.factoryAudition());
-        const auto p=mhac::factory_presets[i].sound;
+        const auto p=factoryEntry(i).sound;
         const auto c=ui.effective(t);
         assert(c.gate && !c.mute && c.x==p.x && c.y==p.y && c.patch==p.patch);
         unsigned active=0;
@@ -36,19 +36,23 @@ static void factoryIntegration() {
         }
         assert(active>0 && !io.watchdog_trips.load());
         touch(false,0,0); assert(!ui.control().gate && !ui.factoryAudition());
+        publishControl(io,ui.effective(t)); synth.render(io,pcm.data(),pcm.size());
     }
     touch(true,180,230); touch(true,180,230); assert(ui.factoryAudition());
     ui.expire(t+101); assert(ui.control().mute && !ui.control().gate && !ui.factoryAudition());
     t+=102; touch(false,0,0); touch(true,310,10); touch(false,0,0);
     touch(true,180,230); touch(true,180,230); ui.observeWatchdog(1);
     assert(ui.control().mute && !ui.factoryAudition()); touch(false,0,0);
-    Frame f{}; f.factory_index=11; f.factory_audition=true;
+    Frame f{}; f.factory_audition=true;
     std::array<uint16_t,width*strip> pixels{};
-    for(unsigned q:{1u,2u,4u}) {
+    for(unsigned index=0;index<factory_count;++index) for(unsigned q:{1u,2u,4u}) {
+        f.factory_index=index;
         renderStrip(f,224,q,pixels.data());
-        assert(pixels[152]==rgb(238,220,128) && pixels[172]==rgb(64,220,150));
+        for(unsigned k=0;k<factory_count;++k)
+            assert(pixels[92+4*k]==(k==index?rgb(238,220,128):rgb(65,80,94)));
+        assert(pixels[172]==rgb(64,220,150));
     }
-    std::puts("factory integration PASS: 12 exact auditions, loop cancellation, stale/watchdog mute and indicators");
+    std::puts("factory integration PASS: 16 exact auditions, loop cancellation, stale/watchdog mute and 768 indicator checks");
 }
 int main(){
     factoryIntegration();

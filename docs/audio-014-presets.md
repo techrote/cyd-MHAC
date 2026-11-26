@@ -1,0 +1,16 @@
+# CYD-AUDIO-014 — Modal performance presets and opt-in sound storage
+
+Refs #1, cumulative Draft/HOLD #2. Exact parent 56289f7766a777a08ffdbdc92db33b73734eddc8; AUDIO-013 run 45817964968 and integrated VISUAL-012 run 45820628536 completed successfully. Latest Windows audition artifact 15118336218. No audio algorithm, shared control wire, existing legacy bank or existing storage key changes.
+
+Four original Modal Chime sounds: Stone Bell (0,256), Hollow Gong (683,900), Copper Rain (1365,2200), Glass Pins (2730,4095), all patch ID 6. Serial diagnostic M–P auditions these, A–L unchanged. The visual lane may adopt modal_presets explicitly; do not change legacy factory_presets size or assume automatic UI exposure.
+
+New opt-in codec keeps the 12-byte MHPS layout and existing CRC. Canonical legacy IDs 0–5 remain version 1 with identical bytes; version 2 is valid only for ID 6. Invalid input leaves destination unchanged. Legacy codec rejects v2 as before. No gate/mute or UI state stored. Separate NVS namespace mhac-audio key sound-v2, S/R save/recall; s/r legacy sound-v1 untouched. Both slots require explicit mute and 250 ms quiet intent guard, recall never publishes a gate, p explicitly auditions. No automatic migration or fallback. The extended slot may also store canonical legacy v1 records. Backend write/readback failures reported, no guarantee of atomic rollback, NVS device persistence or on-device timing. Strong visual hooks unaffected.
+
+Native g++ optimized and clang++ ASan/UBSan (C++17, -ffp-contract=off, -Wall -Wextra -Werror) executed tests/performance_preset_test.cpp with -Iinclude. Both pass 28,672 coordinate round trips, 65,536 version/ID pairs with recomputed CRC, 384 single-bit corruption rejections, fake backend failures and four exactly partition-invariant 96,000-sample renderings. New tested blobs: header 13ee22fa8ade580b7e77b1abef3537f9ab39d634, test e849f3fea1497b2e0da906d548c7a67ae79baa97. Exact unchanged input engine 5dff26749570eb5e65a7f85db2b1dd49d96e2225, features 19cfc3bea8810998508d1dbef794118c08ca020a, modal 3a8dd866a2aa158baa7d0bc944bba8359b951f9c, v1 codec d1b41d63b3a2b6872d81792f46d31347038dd3ce, store fdb23e2eb9b1ec03aa385aad535adeecce102e36.
+
+Compile: g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/performance_preset_test.cpp -o /tmp/performance_preset_test
+Run /tmp/performance_preset_test for tests; pass any argument from a writable scratch directory to emit four little-endian mono PCM16 (24 kHz) files and 12-byte MHPS records. Same 3-strike score; measured absolute peaks 5396/4524/4294/3908; last nonzero sample indices 60815/54578/43294/31604 respectively. Native renders, no subjective listening. New target build pending. Local DNS blocked, PlatformIO unavailable. Existing CI job only, one added test.
+
+Read-only refs: Diviner HAL and MIT license at 82e06e11e5947e41e888716e7a68e99187410f2e, MHAC README at 495a98ca12bae467a507031f04931aa4254b1866, FM-1-MHAC README at 16c698d9e244559064a9a9a22f834d36912bf498, Three Winters source diff at 91dc53aca2076665693cbef9f0c61fd913b28745. Original creative percussive presets; no upstream code copied or scientific claim.
+
+Next: target receipt, visual opt-in, full recovery layout evidence, owner physical audio/display evaluation. No merge or flash approval.

@@ -153,7 +153,7 @@ int main(int argc,char** argv) {
         const auto c=ui.tick(audio,now);
         if(ui.surface.factoryIndex()!=lastFactory) {
             lastFactory=ui.surface.factoryIndex();
-            const std::string title=std::string("CYD-MHAC | ")+mhac::factory_presets[lastFactory].name+" | Esc: mute | Q: quit";
+            const std::string title=std::string("CYD-MHAC | ")+factoryEntry(lastFactory).name+" | Esc: mute | Q: quit";
             SDL_SetWindowTitle(res.window,title.c_str());
         }
         if(uint32_t(now-lastFrame)>=33) {

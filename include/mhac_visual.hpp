@@ -159,8 +159,8 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
         return rgb(12,20,28);
     }
     // Separate factory cursor and hold-to-audition key, aligned to all quality tiers.
-    if(x>=108 && x<156 && y>=224 && y<236) {
-        const unsigned i=unsigned(x-108)/4;
+    if(x>=92 && x<156 && y>=224 && y<236) {
+        const unsigned i=unsigned(x-92)/4;
         return i==f.factory_index?rgb(238,220,128):rgb(65,80,94);
     }
     if(x>=172 && x<188 && y>=224 && y<236)

@@ -2,8 +2,10 @@ CYD-MHAC — Windows x64 interactive audition candidate
 Extract all files, then double-click Open CYD-MHAC.cmd.
 No CYD, DAW, MIDI, network or Python required at runtime.
 Start muted: top-right unmute; release; left mouse drag to play.
-Top-left visual; bottom-left sound; bottom-center-left factory bank;
+Top-left visual; bottom-left sound; bottom-center-left factory bank (16 sounds; tap x88–159 of 320);
 bottom-center-right hold factory audition; bottom-right pitch scale.
+Last four factory sounds: Stone Bell, Hollow Gong, Copper Rain, Glass Pins.
+Select does not strike; hold audition to sound after explicit unmute.
 Top-center gesture quotation; Esc mutes and cancels; Q quits.
 Window focus loss/minimize also mutes. Start at low speaker volume.
 This is the actual C++ audio engine and RGB565 renderer on a desktop,
