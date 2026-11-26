@@ -4,6 +4,9 @@ on:
     branches: [audio/cyd-audio-001, main]
     paths:
       - 'include/mhac_visual.hpp'
+      - 'include/mhac_desktop_audio.hpp'
+      - 'tests/desktop_audio_test.cpp'
+      - 'tools/desktop/**'
       - 'include/mhac_gesture.hpp'
       - 'include/mhac_performance.hpp'
       - 'include/mhac_timing.hpp'
@@ -70,6 +73,20 @@ jobs:
           test "$(git hash-object tests/reference/audio_002.hpp)" = 9b17e33ad666d3a152ade642c4e363d3a51cd0ef
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/legacy_compare.cpp -o /tmp/legacy_compare
           /tmp/legacy_compare | tee receipts/legacy-compare.txt
+      - name: Desktop audition smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/desktop_audio_test.cpp -o /tmp/desktop_audio_test
+          /tmp/desktop_audio_test | tee receipts/desktop-audio-test.txt
+          if ! pkg-config --exists sdl2; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends libsdl2-dev
+          fi
+          pkg-config --modversion sdl2 > receipts/desktop-sdl-version.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/desktop/main.cpp $(pkg-config --cflags --libs sdl2) -o /tmp/mhac-desktop
+          SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy /tmp/mhac-desktop --smoke receipts/desktop-loop.ppm | tee receipts/desktop-smoke.txt
+          cp /tmp/mhac-desktop receipts/mhac-desktop-linux
       - name: Target compile
         shell: bash
         run: |
