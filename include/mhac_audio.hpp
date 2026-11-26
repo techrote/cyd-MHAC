@@ -4,6 +4,7 @@
 #include <cmath>
 #include <algorithm>
 #include "mhac_features.hpp"
+#include "mhac_modal.hpp"
 namespace mhac {
 constexpr unsigned rate = 24000, block = 128, contract_version = 1;
 // Optional patch extension v1. Existing four-argument publishers retain phase morph.
@@ -12,6 +13,9 @@ constexpr unsigned patch_version = 1, patch_count = 4;
 // v2 clients opt into the extended catalogue; bit 28 was unused in v1.
 constexpr unsigned patch_extension_version = 2, extended_patch_count = 6;
 enum class Patch : unsigned { PhaseMorph, HarmonicLattice, RingDialect, DetunedSwarm, ErasurePulse, RecursiveEcho };
+// Explicit opt-in to v3; v1/v2 callers and their six-patch catalogue remain unchanged.
+constexpr unsigned modal_extension_version = 3, modal_patch_index = 6, performance_patch_count = 7;
+constexpr uint32_t modal_opt_in = 1u<<29;
 constexpr unsigned motif_period = rate / 2, echo_samples = 1536;
 constexpr unsigned control_lease_samples = rate / 2;
 static_assert(std::atomic<uint32_t>::is_always_lock_free, "32-bit mailbox required");
@@ -26,12 +30,20 @@ struct Exchange {
     void publish_patch(unsigned x, unsigned y, bool gate, bool mute, Patch patch) noexcept {
         const unsigned id=static_cast<unsigned>(patch);
         const unsigned valid=id<extended_patch_count?id:0u;
+        publish_word(x,y,gate,mute,valid,0);
+    }
+    void publish_modal(unsigned x,unsigned y,bool gate,bool mute) noexcept {
+        publish_word(x,y,gate,mute,modal_patch_index,modal_opt_in);
+    }
+private:
+    void publish_word(unsigned x,unsigned y,bool gate,bool mute,unsigned id,uint32_t extension) noexcept {
         // Odd sequence marks an in-progress write; even commits a complete publication.
         heartbeat.fetch_add(1,std::memory_order_seq_cst);
         control.store(std::min(x,4095u) | (std::min(y,4095u)<<12) |
-                      (uint32_t(gate)<<24) | (uint32_t(mute)<<25) | (valid<<26), std::memory_order_seq_cst);
+                      (uint32_t(gate)<<24) | (uint32_t(mute)<<25) | (id<<26) | extension, std::memory_order_seq_cst);
         heartbeat.fetch_add(1,std::memory_order_seq_cst);
     }
+public:
     uint32_t snapshot() const noexcept { return analysis.load(std::memory_order_relaxed); }
 };
 // Audio-thread owned state. Original v1 oscillator and independent gate lease.
@@ -43,7 +55,9 @@ class Engine {
     float hz_=110.f, morph_=0.f, env_=0.f;
     uint32_t swarm_lo_=0, swarm_hi_=0;
     // Integer simplex: exactly 256 total, up to 256 samples per full transition.
-    unsigned weights_[extended_patch_count]={256,0,0,0,0,0};
+    unsigned weights_[performance_patch_count]={256,0,0,0,0,0,0};
+    ModalChime modal_;
+    bool modal_used_=false;
     unsigned motif_phase_=0, echo_pos_=0, echo_valid_=0;
     float rhythm_gain_=0.f;
     int16_t echo_[echo_samples]={};
@@ -65,7 +79,8 @@ public:
         }
         const auto c=accepted_control_;
         const unsigned id=(c>>26)&7u;
-        const unsigned patch=id<extended_patch_count?id:0u;
+        const unsigned patch=id<extended_patch_count?id:
+            (id==modal_patch_index && (c&modal_opt_in)?modal_patch_index:0u);
         const float x=float(c&4095u)/4095.f, y=float((c>>12)&4095u)/4095.f;
         const float target=110.f*std::exp2(3.f*x);
         const bool requested=(c&(1u<<24)) && !(c&(1u<<25));
@@ -89,7 +104,7 @@ public:
             const auto detune=uint32_t(float(step)*(.004f+.024f*morph_));
             swarm_lo_+=step-detune; swarm_hi_+=step+detune;
             if(weights_[patch]<256u) {
-                for(unsigned j=0;j<extended_patch_count;++j) if(j!=patch && weights_[j]) {
+                for(unsigned j=0;j<performance_patch_count;++j) if(j!=patch && weights_[j]) {
                     --weights_[j]; ++weights_[patch]; break;
                 }
             }
@@ -118,6 +133,11 @@ public:
                 const float mix=.65f*morph_;
                 wet=a*(1.f-mix)+delayed*mix;
             } else { echo_pos_=0; echo_valid_=0; }
+            float modal=0.f;
+            if(weights_[modal_patch_index]) {
+                modal=modal_.sample(step,morph_,active && patch==modal_patch_index,sine);
+                modal_used_=true;
+            } else if(modal_used_) { modal_.reset(); modal_used_=false; }
             float sound=original;
             if(weights_[0]!=256u) {
                 sound=original*float(weights_[0]);
@@ -135,6 +155,7 @@ public:
                 }
                 if(weights_[4]) sound+=float(weights_[4])*rhythm;
                 if(weights_[5]) sound+=float(weights_[5])*wet;
+                if(weights_[modal_patch_index]) sound+=float(weights_[modal_patch_index])*modal;
                 sound*=1.f/256.f;
             }
             const int v=int(8191.f*env_*sound);
