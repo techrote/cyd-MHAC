@@ -7,11 +7,9 @@
 #include "mhac_trace.hpp"
 #include "mhac_gesture.hpp"
 #include "mhac_factory_ui.hpp"
+#include "mhac_visual_patch.hpp"
 namespace mhac::visual {
 constexpr int width=320, height=240, strip=8;
-constexpr unsigned mode_count=7, sound_count=6;
-constexpr unsigned paired_mode[sound_count]={0,1,4,3,2,5};
-struct Control { unsigned x=2048,y=2048; bool gate=false,mute=true; unsigned patch=0; };
 struct Calibration {
     int left=200,right=3900,top=3900,bottom=200;
     static int map(int v,int a,int b,int n) noexcept {
@@ -51,7 +49,7 @@ public:
             if(x<24) mode_=(mode_+1)%mode_count; else { c_.mute=!c_.mute; if(!c_.mute) watchdog_=false; }
             c_.gate=false; blocked_=true; return;
         }
-        if(fresh && x<24 && y>=height-24) {
+        if(fresh && soundSelector(x,y)) {
             c_.patch=(c_.patch+1)%sound_count; mode_=paired_mode[c_.patch];
             c_.gate=false; blocked_=true; return;
         }
@@ -124,6 +122,9 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
     } else if(f.mode==5) { // Ink: persistent gesture energy, not an audio waveform.
         const auto s=f.ink?f.ink->shade(x,y):InkField::Shade{5,12,22};
         r=s.r;g=s.g;b=s.b;
+    } else if(f.mode==chime_mode) { // Chime: stylized resonating plates.
+        const auto s=chimeShade(dx,dy,f.control.y,f.analysis&4095u,unsigned(ph),f.tick);
+        r=s.r;g=s.g;b=s.b;
     } else { // Trace: observed PCM feature history, not spectral bands.
         const auto s=f.trace?f.trace->shade(x,y):Trace::Shade{5,8,15};
         r=s.r;g=s.g;b=s.b;
@@ -144,8 +145,8 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
     // Tiny controls, visible without covering the performance surface.
     if(x<24 && y<24 && (x==4||x==19||y==4||y==19) && x>=4&&x<=19&&y>=4&&y<=19) return rgb(130,180,210);
     if(x>=296 && y<24 && x>=300&&x<=315&&y>=4&&y<=19 && (x<304||x>=312||y<8||y>=16|| (f.control.mute&&std::abs((x-300)-(y-4))<=2))) return f.control.mute?(f.watchdog?rgb(255,184,32):rgb(255,72,48)):rgb(64,220,150);
-    // Six aligned bars, plus three pitch-map indicators. Visible at 4x shading.
-    if(x<24 && y>=220 && y<236) {
+    // Seven aligned bars, plus three pitch-map indicators. Visible at 4x shading.
+    if(x<int(sound_count*4) && y>=220 && y<236) {
         const unsigned index=unsigned(x)/4;
         if(x%4==3) return rgb(12,20,28);
         if(y>=228 || index==f.control.patch) return index==f.control.patch?rgb(238,220,128):rgb(65,80,94);

@@ -67,5 +67,5 @@ int main(int argc,char** argv) {
         renderStrip(f,232,q,pixels.data());
         for(unsigned k=0;k<scale_count;++k) assert(pixels[296+8*k]==(k==s?rgb(116,210,240):rgb(65,80,94)));
     }
-    std::cout<<"PASS six paired modes, independent visual selection, gesture ownership, pitch maps, heartbeat, watchdog and mute\n";
+    std::cout<<"PASS seven paired modes, independent visual selection, gesture ownership, pitch maps, heartbeat, watchdog and mute\n";
 }

@@ -4,6 +4,8 @@ on:
     branches: [audio/cyd-audio-001, main]
     paths:
       - 'include/mhac_visual.hpp'
+      - 'include/mhac_visual_patch.hpp'
+      - 'tests/chime_ui_test.cpp'
       - 'include/mhac_factory_ui.hpp'
       - 'include/mhac_presets.hpp'
       - 'tests/factory_ui_test.cpp'
@@ -51,6 +53,8 @@ jobs:
           set -euo pipefail
           mkdir -p receipts
           git rev-parse HEAD > receipts/source-sha.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/chime_ui_test.cpp -o /tmp/chime_ui_test
+          /tmp/chime_ui_test | tee receipts/chime-ui-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_test.cpp -o /tmp/visual_test
           /tmp/visual_test receipts | tee receipts/host-replay.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/gesture_test.cpp -o /tmp/gesture_test

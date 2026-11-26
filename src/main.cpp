@@ -89,7 +89,11 @@ void __attribute__((weak)) mhac_ui_tick() {
     static bool sounding=false, muted=true;
     static mhac::SoundPreset preset{0,512,0};
     auto selected=[&] { return static_cast<mhac::Patch>(preset.patch); };
-    auto play=[&] { muted=false; mhac::exchange.publish_patch(preset.x,preset.y,true,false,selected()); };
+    auto send=[&](unsigned x,unsigned y,bool gate,bool mute) {
+        if(preset.patch==mhac::modal_patch_index) mhac::exchange.publish_modal(x,y,gate,mute);
+        else mhac::exchange.publish_patch(x,y,gate,mute,selected());
+    };
+    auto play=[&] { muted=false; send(preset.x,preset.y,true,false); };
     for(unsigned i=0;i<16 && Serial.available();++i) {
         const int c=Serial.read();
         if(c>='1' && c<='8') {
@@ -98,6 +102,10 @@ void __attribute__((weak)) mhac_ui_tick() {
                          mhac::SoundPreset{uint8_t(key-2),2300,3400};
             play();
             sounding=true; last=millis();
+        } else if(c=='9') {
+            // Explicit opt-in v3 sound; the v1 preset record deliberately rejects ID 6.
+            preset=mhac::SoundPreset{uint8_t(mhac::modal_patch_index),2048,3400};
+            play(); sounding=true; last=millis();
         } else if(c>='A' && c<='L') {
             preset=mhac::factory_presets[unsigned(c-'A')].sound;
             play(); sounding=true; last=millis();
@@ -122,11 +130,11 @@ void __attribute__((weak)) mhac_ui_tick() {
             } else Serial.println("timing unavailable; retry");
         } else if(c=='0' || c=='m') {
             muted=c=='m';
-            mhac::exchange.publish_patch(512,0,false,muted,selected()); sounding=false; quiet_since=millis();
+            send(512,0,false,muted); sounding=false; quiet_since=millis();
         }
     }
     if(sounding && uint32_t(millis()-last)>=2000) {
-        mhac::exchange.publish_patch(512,0,false,true,selected()); sounding=false; muted=true; quiet_since=millis();
+        send(512,0,false,true); sounding=false; muted=true; quiet_since=millis();
     } else if(sounding) {
         // Renew only while the diagnostic UI is running, never from audio_task.
         play();
@@ -135,7 +143,7 @@ void __attribute__((weak)) mhac_ui_tick() {
 void setup() {
     Serial.begin(115200);
     const bool ready=audio_begin();
-    Serial.println(ready?"MHAC audio initialized; serial 1-8, A-L, p, 0, m, d, s, r":"MHAC audio initialization FAILED");
+    Serial.println(ready?"MHAC audio initialized; serial 1-9, A-L, p, 0, m, d, s, r":"MHAC audio initialization FAILED");
     mhac_ui_begin();
 }
 void loop() { mhac_ui_tick(); delay(1); }
