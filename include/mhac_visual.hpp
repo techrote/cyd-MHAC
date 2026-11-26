@@ -19,7 +19,7 @@ class Surface {
     uint32_t last_=0, trips_=0; bool watchdog_=false;
     Scale scale_=Scale::Free; unsigned raw_x_=2048;
     Palette palette_=Palette::Original;
-    XYMap mapping_=XYMap::Direct; XYMapper mapper_;
+    XYMap mapping_=XYMap::Direct; XYMapper mapper_; LatticeCell lattice_{};
     FactorySelection factory_; bool audition_=false;
 public:
     Control control() const noexcept { return c_; }
@@ -76,7 +76,8 @@ public:
             c_.gate=!c_.mute; return;
         }
         if(mapping_==XYMap::Lattice) {
-            const auto cell=latticeCell(x,y,scale_);
+            const auto cell=latticeTrackedCell(x,y,scale_,lattice_,count_==0);
+            lattice_=cell;
             raw_x_=c_.x=pitchCoordinate(cell.note);
             if(count_<2) ++count_;
             c_.y=count_==1?cell.timbre:(c_.y+cell.timbre*3u+2u)/4u;

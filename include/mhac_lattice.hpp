@@ -15,6 +15,22 @@ constexpr LatticeCell latticeCell(int x,int y,Scale s) noexcept {
     const unsigned octave=up/80u;
     return {col,octave,octave*12u+latticeSemitone(col,s),(up%80u)*4095u/79u};
 }
+// A three-pixel Schmitt margin suppresses adjacent-cell chatter during a
+// contact. Fresh contacts select the geometric cell without hysteresis.
+constexpr int lattice_margin=3;
+constexpr LatticeCell latticeTrackedCell(int x,int y,Scale s,LatticeCell previous,bool fresh) noexcept {
+    const auto target=latticeCell(x,y,s);
+    if(fresh || previous.col>=latticeColumns(s) || previous.octave>=3) return target;
+    const int px=std::clamp(x,0,319), up=239-std::clamp(y,0,239);
+    const unsigned cols=latticeColumns(s);
+    const int left=int((previous.col*320u+cols-1u)/cols);
+    const int right=int(((previous.col+1u)*320u+cols-1u)/cols);
+    const int bottom=int(previous.octave*80u);
+    const unsigned col=px>=left-lattice_margin && px<right+lattice_margin?previous.col:target.col;
+    const unsigned octave=up>=bottom-lattice_margin && up<bottom+80+lattice_margin?previous.octave:target.octave;
+    const unsigned timbre=unsigned(std::clamp(up-int(octave*80u),0,79))*4095u/79u;
+    return {col,octave,octave*12u+latticeSemitone(col,s),timbre};
+}
 struct LatticeCursor { int x,y; };
 constexpr LatticeCursor latticeCursor(unsigned pitch,unsigned timbre,Scale s) noexcept {
     // Factory coordinates may be off-scale or at the top endpoint; the cursor
