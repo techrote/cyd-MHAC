@@ -1,0 +1,63 @@
+#if defined(MHAC_VISUAL_TARGET)
+#include <Arduino.h>
+#include <SPI.h>
+#include <XPT2046_Touchscreen.h>
+#include <LovyanGFX.hpp>
+#include "mhac_platform.hpp"
+#include "mhac_visual.hpp"
+namespace {
+using namespace mhac::visual;
+static_assert(mhac::contract_version==1,"visual contract pin required");
+class Display : public lgfx::LGFX_Device {
+    lgfx::Bus_SPI bus; lgfx::Panel_ILI9341_2 panel;
+public:
+    Display() {
+        auto b=bus.config(); b.spi_host=SPI2_HOST; b.freq_write=40000000; b.freq_read=8000000;
+        b.spi_3wire=false; b.pin_sclk=14; b.pin_mosi=13; b.pin_miso=12; b.pin_dc=2;
+        bus.config(b); panel.setBus(&bus);
+        auto p=panel.config(); p.pin_cs=15; p.pin_rst=-1; p.invert=true; p.bus_shared=false;
+        panel.config(p); setPanel(&panel);
+    }
+};
+Display lcd; SPIClass touchBus(VSPI); XPT2046_Touchscreen touch(33);
+Surface ui; Calibration cal; Frame frame; uint16_t pixels[width*strip];
+bool ready=false, fault=false; int row=0; unsigned quality=2, fastFrames=0;
+uint32_t lastPoll=0, frameStart=0, frameUs=0, maxStripUs=0, frames=0;
+void publish() { const auto c=ui.control(); mhac::exchange.publish(c.x,c.y,c.gate,c.mute); }
+}
+void mhac_ui_begin() {
+    pinMode(0,INPUT_PULLUP); pinMode(21,OUTPUT); digitalWrite(21,LOW);
+    ready=lcd.init();
+    if(ready) { lcd.setRotation(5); ready=lcd.width()==width && lcd.height()==height; }
+    if(!ready) { ui.forceMute(); publish(); return; }
+    lcd.fillScreen(0); digitalWrite(21,HIGH);
+    touchBus.begin(25,39,32,33); touch.begin(touchBus); touch.setRotation(0);
+    publish();
+}
+void mhac_ui_tick() {
+    if(!ready) return;
+    const uint32_t now=millis(); ui.expire(now);
+    if(mhac::audio_errors.load(std::memory_order_relaxed)!=0) fault=true;
+    if(fault || digitalRead(0)==LOW) ui.forceMute();
+    if(uint32_t(now-lastPoll)>=8) {
+        lastPoll=now; const auto p=touch.getPoint(); int x=0,y=0;
+        cal.landscape(p.x,p.y,x,y); ui.sample(p.z>=400,x,y,now);
+        if(fault || digitalRead(0)==LOW) ui.forceMute();
+    }
+    publish();
+    if(row==0) { frame={ui.control(),ui.mode(),mhac::exchange.snapshot(),now/25}; frameStart=micros(); maxStripUs=0; }
+    const uint32_t start=micros();
+    renderStrip(frame,row,quality,pixels); lcd.pushImage(0,row,width,strip,pixels);
+    maxStripUs=std::max(maxStripUs,uint32_t(micros()-start));
+    row+=strip;
+    if(row==height) {
+        row=0; frameUs=micros()-frameStart; ++frames;
+        if(frameUs>85000 || maxStripUs>5000) { quality=4; fastFrames=0; }
+        else if(quality==4 && frameUs<55000 && maxStripUs<3000) { if(++fastFrames>=60) { quality=2;fastFrames=0; } }
+        else fastFrames=0;
+        // Low-rate telemetry only while silent and when the UART has space.
+        if(frames%120==0 && !ui.control().gate && Serial.availableForWrite()>=96)
+            Serial.printf("visual frame_us=%lu strip_us=%lu step=%u blocks=%lu errors=%lu\n",(unsigned long)frameUs,(unsigned long)maxStripUs,quality,(unsigned long)mhac::audio_blocks.load(),(unsigned long)mhac::audio_errors.load());
+    }
+}
+#endif
