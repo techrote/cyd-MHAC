@@ -67,6 +67,8 @@ jobs:
           /tmp/preset_store_test | tee receipts/preset-store-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/performance_preset_test.cpp -o /tmp/performance_preset_test
           /tmp/performance_preset_test | tee receipts/performance-preset-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/quotation_study.cpp -o /tmp/quotation_study
+          /tmp/quotation_study | tee receipts/quotation-study.txt
       - name: Target compile
         shell: bash
         run: |
