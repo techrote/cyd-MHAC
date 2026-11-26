@@ -47,7 +47,7 @@ int main(int argc,char** argv) {
         touch(false,0,0);
         std::printf("frame %u hash %016llx\n",n,static_cast<unsigned long long>(h));
     }
-    assert(active>0); tap(10,10); assert(ui.mode()==0);
+    assert(active>0); tap(10,10); assert(ui.mode()==quotation_mode); tap(10,10); assert(ui.mode()==0);
     std::printf("caustic PASS: 3 frames, 691200 pixel equivalence checks, %u active PCM samples, mode cycle and safety overlays\n",active);
     Frame f{}; f.mode=caustic_mode; f.analysis=io.snapshot(); f.control=ui.control();
     for(unsigned q:{1u,2u,4u}) {

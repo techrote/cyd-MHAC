@@ -40,3 +40,13 @@ Ninth visual engine: Caustic. From the initial Resonance visual, tap top-left
  eight times (release between taps). Intersecting curved light sheets and a
  gesture-centred ring respond to aggregate PCM peak, phase and timbre. This is
  decorative, not a measured acoustic field. The sound selection is unchanged.
+
+Eighth synthesis engine: Quotation. From Phase Morph, tap bottom-left seven
+ times, releasing between taps. The paired tenth visual, Palimpsest, shows
+ stylized echoes of the current cursor; it is not DSP history telemetry.
+ Direct mapping: X pitch, Y historical voice depth (up to 70%). Hold and
+ move for more than 500 ms of active audio to hear recalled gestures.
+ Mute and deselection invalidate DSP history. This is separate from the
+ top-center UI gesture looper. Experimental session-only engine; factory
+ bank and storage formats remain unchanged. Factory selection returns to
+ a legacy patch.

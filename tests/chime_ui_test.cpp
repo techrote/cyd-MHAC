@@ -12,13 +12,14 @@ int main() {
         assert(bool(w&(1u<<24))==gate && bool(w&(1u<<25))==mute);
         assert(((w>>26)&7u)==(p<sound_count?p:0));
         assert(bool(w&mhac::modal_opt_in)==(p==6));
+        assert(bool(w&mhac::quotation_opt_in)==(p==7));
     }
     unsigned region=0;
     for(int y=-1;y<=240;++y) for(int x=-1;x<=320;++x) {
         const bool yes=soundSelector(x,y); region+=yes;
-        assert(yes==(x>=0&&x<28&&y>=216&&y<240));
+        assert(yes==(x>=0&&x<32&&y>=216&&y<240));
     }
-    assert(region==672 && paired_mode[6]==chime_mode);
+    assert(region==768 && paired_mode[6]==chime_mode);
     mhac::Engine engine; std::array<int16_t,mhac::block> pcm{};
     auto render=[&](bool gate,bool mute,unsigned n) {
         unsigned peak=0;

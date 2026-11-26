@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "mhac_features.hpp"
 #include "mhac_modal.hpp"
+#include "mhac_quotation.hpp"
 namespace mhac {
 constexpr unsigned rate = 24000, block = 128, contract_version = 1;
 // Optional patch extension v1. Existing four-argument publishers retain phase morph.
@@ -16,6 +17,9 @@ enum class Patch : unsigned { PhaseMorph, HarmonicLattice, RingDialect, DetunedS
 // Explicit opt-in to v3; v1/v2 callers and their six-patch catalogue remain unchanged.
 constexpr unsigned modal_extension_version = 3, modal_patch_index = 6, performance_patch_count = 7;
 constexpr uint32_t modal_opt_in = 1u<<29;
+// v4 opt-in; legacy catalogue counts and preset codecs are unchanged.
+constexpr unsigned quotation_extension_version=4, quotation_patch_index=7, mix_patch_count=8;
+constexpr uint32_t quotation_opt_in=1u<<30;
 constexpr unsigned motif_period = rate / 2, echo_samples = 1536;
 constexpr unsigned control_lease_samples = rate / 2;
 static_assert(std::atomic<uint32_t>::is_always_lock_free, "32-bit mailbox required");
@@ -34,6 +38,9 @@ struct Exchange {
     }
     void publish_modal(unsigned x,unsigned y,bool gate,bool mute) noexcept {
         publish_word(x,y,gate,mute,modal_patch_index,modal_opt_in);
+    }
+    void publish_quotation(unsigned x,unsigned y,bool gate,bool mute) noexcept {
+        publish_word(x,y,gate,mute,quotation_patch_index,quotation_opt_in);
     }
 private:
     void publish_word(unsigned x,unsigned y,bool gate,bool mute,unsigned id,uint32_t extension) noexcept {
@@ -55,7 +62,9 @@ class Engine {
     float hz_=110.f, morph_=0.f, env_=0.f;
     uint32_t swarm_lo_=0, swarm_hi_=0;
     // Integer simplex: exactly 256 total, up to 256 samples per full transition.
-    unsigned weights_[performance_patch_count]={256,0,0,0,0,0,0};
+    unsigned weights_[mix_patch_count]={256,0,0,0,0,0,0,0};
+    Quotation quotation_;
+    bool quotation_used_=false;
     ModalChime modal_;
     bool modal_used_=false;
     unsigned motif_phase_=0, echo_pos_=0, echo_valid_=0;
@@ -80,7 +89,8 @@ public:
         const auto c=accepted_control_;
         const unsigned id=(c>>26)&7u;
         const unsigned patch=id<extended_patch_count?id:
-            (id==modal_patch_index && (c&modal_opt_in)?modal_patch_index:0u);
+            (id==modal_patch_index && (c&modal_opt_in)?modal_patch_index:
+            (id==quotation_patch_index && (c&quotation_opt_in) && !(c&modal_opt_in)?quotation_patch_index:0u));
         const float x=float(c&4095u)/4095.f, y=float((c>>12)&4095u)/4095.f;
         const float target=110.f*std::exp2(3.f*x);
         const bool requested=(c&(1u<<24)) && !(c&(1u<<25));
@@ -101,7 +111,7 @@ public:
             const auto detune=uint32_t(float(step)*(.004f+.024f*morph_));
             swarm_lo_+=step-detune; swarm_hi_+=step+detune;
             if(weights_[patch]<256u) {
-                for(unsigned j=0;j<performance_patch_count;++j) if(j!=patch && weights_[j]) {
+                for(unsigned j=0;j<mix_patch_count;++j) if(j!=patch && weights_[j]) {
                     --weights_[j]; ++weights_[patch]; break;
                 }
             }
@@ -148,6 +158,12 @@ public:
                 modal=modal_.sample(step,morph_,active && patch==modal_patch_index,sine,inhibit);
                 modal_used_=true;
             } else if(modal_used_) { modal_.reset(); modal_used_=false; }
+            float quote=0.f;
+            if(weights_[quotation_patch_index] && env_>0.f) {
+                const bool inhibit=(c&(1u<<25)) || (requested && !active) || patch!=quotation_patch_index;
+                quote=quotation_.sample(phase_,step,morph_,a,active && patch==quotation_patch_index,inhibit,sine);
+                quotation_used_=true;
+            } else if(quotation_used_) { quotation_.reset(); quotation_used_=false; }
             float sound=original;
             if(weights_[0]!=256u) {
                 sound=original*float(weights_[0]);
@@ -165,6 +181,7 @@ public:
                 }
                 if(weights_[4]) sound+=float(weights_[4])*rhythm;
                 if(weights_[5]) sound+=float(weights_[5])*wet;
+                if(weights_[quotation_patch_index]) sound+=float(weights_[quotation_patch_index])*quote;
                 sound*=1.f/256.f;
             }
             // Preserve the exact legacy arithmetic when no modal contribution is mixed.

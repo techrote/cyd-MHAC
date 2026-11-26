@@ -171,6 +171,17 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
         r=6+glow/3+ring;
         g=10+glow+ring/2;
         b=22+glow*3/4+ring*2;
+    } else if(f.mode==quotation_mode) { // Palimpsest: stylized recalled contours.
+        // Procedural echoes of the current cursor; not a readout of DSP history.
+        const int depth=int(f.control.y>>4);
+        const int bend=dy*dy/180;
+        const int live=tri(dx*6+bend+ph);
+        const int echo=tri((dx-20-depth/8)*6-bend+t*2);
+        const int ink=std::max(0,live-212)*5;
+        const int ghost=std::max(0,echo-196)*depth/64;
+        const int grain=tri(dy*7+t)/24;
+        r=5+ghost+ink/5; g=9+ink*(96+a/2)/255+ghost/3;
+        b=18+ink+ghost*3/4+grain;
     } else { // Trace: observed PCM feature history, not spectral bands.
         const auto s=f.trace?f.trace->shade(x,y):Trace::Shade{5,8,15};
         r=s.r;g=s.g;b=s.b;
@@ -213,7 +224,7 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
     // Tiny controls, visible without covering the performance surface.
     if(x<24 && y<24 && (x==4||x==19||y==4||y==19) && x>=4&&x<=19&&y>=4&&y<=19) return rgb(130,180,210);
     if(x>=296 && y<24 && x>=300&&x<=315&&y>=4&&y<=19 && (x<304||x>=312||y<8||y>=16|| (f.control.mute&&std::abs((x-300)-(y-4))<=2))) return f.control.mute?(f.watchdog?rgb(255,184,32):rgb(255,72,48)):rgb(64,220,150);
-    // Seven aligned bars, plus three pitch-map indicators. Visible at 4x shading.
+    // Eight aligned bars, plus three pitch-map indicators. Visible at 4x shading.
     if(x<int(sound_count*4) && y>=220 && y<236) {
         const unsigned index=unsigned(x)/4;
         if(x%4==3) return rgb(12,20,28);
