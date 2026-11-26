@@ -11,6 +11,8 @@ public:
     Control control() const noexcept { return surface_.control(); }
     unsigned mode() const noexcept { return surface_.mode(); }
     Scale scale() const noexcept { return surface_.scale(); }
+    unsigned factoryIndex() const noexcept { return surface_.factoryIndex(); }
+    bool factoryAudition() const noexcept { return surface_.factoryAudition(); }
     bool watchdogLatched() const noexcept { return surface_.watchdogLatched(); }
     GestureLoop::State loopState() const noexcept { return loop_.state(); }
     void expire(uint32_t now) noexcept { surface_.expire(now); cancelIfMuted(); }
@@ -20,7 +22,7 @@ public:
         expire(now);
         if(down && !down_) {
             const bool wasPlaying=loop_.state()==GestureLoop::State::Playing;
-            if(wasPlaying) loop_.stop();
+            if(wasPlaying || factoryAction(x,y)!=FactoryAction::None) loop_.stop();
             if(x>=148 && x<172 && y>=0 && y<24) {
                 consumed_=true;
                 if(!wasPlaying && !surface_.control().mute) loop_.toggle();

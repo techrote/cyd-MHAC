@@ -4,7 +4,54 @@
 #include <cassert>
 #include <cstdio>
 using namespace mhac::visual;
+static void factoryIntegration() {
+    PerformanceSurface ui; uint32_t t=0;
+    auto touch=[&](bool d,int x,int y){ui.sample(d,x,y,t+=8);};
+    assert(ui.factoryIndex()==factory_count);
+    for(unsigned i=0;i<factory_count;++i) {
+        touch(true,120,230); touch(true,220,80); touch(false,0,0);
+        const auto p=mhac::factory_presets[i].sound;
+        const auto c=ui.control();
+        assert(ui.factoryIndex()==i && c.patch==p.patch && c.x==p.x && c.y==p.y && c.mute && !c.gate);
+        touch(true,180,230); touch(true,200,80);
+        assert(!ui.control().gate && !ui.factoryAudition());
+        touch(false,0,0);
+    }
+    touch(true,310,10); touch(false,0,0);
+    touch(true,160,10); touch(false,0,0); assert(ui.loopState()==GestureLoop::State::Armed);
+    mhac::Engine synth; mhac::Exchange io; std::array<int16_t,mhac::block> pcm{};
+    for(unsigned i=0;i<factory_count;++i) {
+        touch(true,120,230); touch(false,0,0);
+        assert(ui.loopState()==GestureLoop::State::Idle && ui.factoryIndex()==i && !ui.control().gate);
+        touch(true,180,230); assert(!ui.control().gate);
+        touch(true,220,120); assert(ui.factoryAudition());
+        const auto p=mhac::factory_presets[i].sound;
+        const auto c=ui.effective(t);
+        assert(c.gate && !c.mute && c.x==p.x && c.y==p.y && c.patch==p.patch);
+        unsigned active=0;
+        for(unsigned n=0;n<64;++n) {
+            touch(true,230,100); publishControl(io,ui.effective(t));
+            synth.render(io,pcm.data(),pcm.size());
+            for(int x:pcm){assert(x>=-8191&&x<=8191); active+=x!=0;}
+        }
+        assert(active>0 && !io.watchdog_trips.load());
+        touch(false,0,0); assert(!ui.control().gate && !ui.factoryAudition());
+    }
+    touch(true,180,230); touch(true,180,230); assert(ui.factoryAudition());
+    ui.expire(t+101); assert(ui.control().mute && !ui.control().gate && !ui.factoryAudition());
+    t+=102; touch(false,0,0); touch(true,310,10); touch(false,0,0);
+    touch(true,180,230); touch(true,180,230); ui.observeWatchdog(1);
+    assert(ui.control().mute && !ui.factoryAudition()); touch(false,0,0);
+    Frame f{}; f.factory_index=11; f.factory_audition=true;
+    std::array<uint16_t,width*strip> pixels{};
+    for(unsigned q:{1u,2u,4u}) {
+        renderStrip(f,224,q,pixels.data());
+        assert(pixels[152]==rgb(238,220,128) && pixels[172]==rgb(64,220,150));
+    }
+    std::puts("factory integration PASS: 12 exact auditions, loop cancellation, stale/watchdog mute and indicators");
+}
 int main(){
+    factoryIntegration();
     PerformanceSurface ui; mhac::Exchange io; mhac::Engine synth;
     std::array<int16_t,mhac::block> pcm{};
     ui.sample(true,160,10,0); ui.sample(false,0,0,8); assert(ui.loopState()==GestureLoop::State::Idle);

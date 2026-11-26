@@ -6,6 +6,7 @@
 #include "mhac_scale.hpp"
 #include "mhac_trace.hpp"
 #include "mhac_gesture.hpp"
+#include "mhac_factory_ui.hpp"
 namespace mhac::visual {
 constexpr int width=320, height=240, strip=8;
 constexpr unsigned mode_count=7, sound_count=6;
@@ -25,21 +26,24 @@ class Surface {
     Control c_{}; unsigned mode_=0, count_=0; bool held_=false, blocked_=false;
     uint32_t last_=0, trips_=0; bool watchdog_=false;
     Scale scale_=Scale::Free; unsigned raw_x_=2048;
+    FactorySelection factory_; bool audition_=false;
 public:
     Control control() const noexcept { return c_; }
     unsigned mode() const noexcept { return mode_; }
     Scale scale() const noexcept { return scale_; }
+    unsigned factoryIndex() const noexcept { return factory_.index(); }
+    bool factoryAudition() const noexcept { return audition_ && c_.gate; }
     bool watchdogLatched() const noexcept { return watchdog_; }
     void observeWatchdog(uint32_t trips) noexcept {
         if(trips!=trips_) { trips_=trips; watchdog_=true; forceMute(); }
     }
-    void forceMute() noexcept { c_.mute=true; c_.gate=false; blocked_=true; count_=0; }
+    void forceMute() noexcept { c_.mute=true; c_.gate=false; blocked_=true; count_=0; audition_=false; }
     void expire(uint32_t now) noexcept {
         if(held_ && uint32_t(now-last_)>100) { forceMute(); held_=false; }
     }
     void sample(bool down,int x,int y,uint32_t now) noexcept {
         expire(now); last_=now;
-        if(!down) { held_=blocked_=false; count_=0; c_.gate=false; return; }
+        if(!down) { held_=blocked_=audition_=false; count_=0; c_.gate=false; return; }
         x=std::clamp(x,0,width-1); y=std::clamp(y,0,height-1);
         if(blocked_) return;
         const bool fresh=!held_; held_=true;
@@ -55,6 +59,20 @@ public:
             scale_=static_cast<Scale>((unsigned(scale_)+1)%scale_count);
             c_.x=mapPitch(raw_x_,scale_); c_.gate=false; blocked_=true; return;
         }
+        if(fresh) {
+            const auto action=factoryAction(x,y);
+            if(action==FactoryAction::Select) {
+                factory_.next(); factory_.load(c_); raw_x_=c_.x;
+                mode_=paired_mode[c_.patch]; blocked_=true; return;
+            }
+            if(action==FactoryAction::Audition) {
+                factory_.ensure(); factory_.load(c_); raw_x_=c_.x;
+                audition_=true; count_=1; return;
+            }
+        }
+        if(audition_) {
+            c_.gate=!c_.mute; return;
+        }
         if(count_<2) ++count_;
         const unsigned tx=unsigned(x)*4095/(width-1), ty=unsigned(height-1-y)*4095/(height-1);
         if(count_==1) { raw_x_=tx; c_.y=ty; }
@@ -65,6 +83,7 @@ public:
 };
 struct Frame {
     Control control{}; unsigned mode=0; uint32_t analysis=0, tick=0; bool watchdog=false; const InkField* ink=nullptr; Scale scale=Scale::Free; const Trace* trace=nullptr; bool trace_fresh=false; GestureLoop::State loop_state=GestureLoop::State::Idle;
+    unsigned factory_index=factory_count; bool factory_audition=false;
 };
 inline int tri(int v) noexcept { const unsigned u=unsigned(v)&255u; return int(u<128?u*2:(255-u)*2); }
 inline uint16_t rgb(int r,int g,int b) noexcept {
@@ -138,6 +157,13 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
         if(y>=228 || index==unsigned(f.scale)) return index==unsigned(f.scale)?rgb(116,210,240):rgb(65,80,94);
         return rgb(12,20,28);
     }
+    // Separate factory cursor and hold-to-audition key, aligned to all quality tiers.
+    if(x>=108 && x<156 && y>=224 && y<236) {
+        const unsigned i=unsigned(x-108)/4;
+        return i==f.factory_index?rgb(238,220,128):rgb(65,80,94);
+    }
+    if(x>=172 && x<188 && y>=224 && y<236)
+        return f.factory_audition?rgb(64,220,150):rgb(110,156,184);
     return rgb(r,g,b);
 }
 // Caller provides exactly width*strip words. Last strip is always full (240/8).

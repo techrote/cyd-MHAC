@@ -78,7 +78,7 @@ struct UI {
         mhac::AudioFeatures latest{};
         if(audio.exchange.features.read(latest)) trace.observe(latest,now);
         Frame f{c,surface.mode(),audio.exchange.snapshot(),now/25,surface.watchdogLatched(),
-                &ink,surface.scale(),&trace,trace.fresh(now),surface.loopState()};
+                &ink,surface.scale(),&trace,trace.fresh(now),surface.loopState(),surface.factoryIndex(),surface.factoryAudition()};
         if(f.mode==5) ink.advance(now,c.x,c.y,c.gate&&!c.mute,f.analysis&4095u);
         return f;
     }
@@ -139,7 +139,7 @@ int main(int argc,char** argv) {
     SDL_PauseAudioDevice(res.device,0);
     const uint32_t start=SDL_GetTicks();
     uint32_t lastFrame=start-33;
-    unsigned next=0,frames=0; bool loopSeen=false,saved=false;
+    unsigned next=0,frames=0,lastFactory=factory_count; bool loopSeen=false,saved=false;
     while(ui.running) {
         const uint32_t now=SDL_GetTicks(), elapsed=now-start;
         SDL_Event e{};
@@ -151,6 +151,11 @@ int main(int argc,char** argv) {
             while(next<sizeof(script)/sizeof(script[0]) && elapsed>=script[next].ms) inject(ui,script[next++],now);
         }
         const auto c=ui.tick(audio,now);
+        if(ui.surface.factoryIndex()!=lastFactory) {
+            lastFactory=ui.surface.factoryIndex();
+            const std::string title=std::string("CYD-MHAC | ")+mhac::factory_presets[lastFactory].name+" | Esc: mute | Q: quit";
+            SDL_SetWindowTitle(res.window,title.c_str());
+        }
         if(uint32_t(now-lastFrame)>=33) {
             lastFrame=now;
             const auto f=ui.frame(audio,c,now);

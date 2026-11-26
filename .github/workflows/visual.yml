@@ -4,6 +4,9 @@ on:
     branches: [audio/cyd-audio-001, main]
     paths:
       - 'include/mhac_visual.hpp'
+      - 'include/mhac_factory_ui.hpp'
+      - 'include/mhac_presets.hpp'
+      - 'tests/factory_ui_test.cpp'
       - 'include/mhac_desktop_audio.hpp'
       - 'tests/desktop_audio_test.cpp'
       - 'tools/desktop/**'
@@ -45,6 +48,7 @@ jobs:
       - name: Native replay and preview
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p receipts
           git rev-parse HEAD > receipts/source-sha.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_test.cpp -o /tmp/visual_test
@@ -53,6 +57,8 @@ jobs:
           /tmp/gesture_test | tee receipts/gesture-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/performance_test.cpp -o /tmp/performance_test
           /tmp/performance_test | tee receipts/performance-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/factory_ui_test.cpp -o /tmp/factory_ui_test
+          /tmp/factory_ui_test | tee receipts/factory-ui-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/trace_test.cpp -o /tmp/trace_test
           /tmp/trace_test | tee receipts/trace-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/trace_integration.cpp -o /tmp/trace_integration
@@ -90,6 +96,7 @@ jobs:
       - name: Target compile
         shell: bash
         run: |
+          set -euo pipefail
           python3 -m venv /tmp/pio
           /tmp/pio/bin/pip install platformio==6.1.18
           /tmp/pio/bin/pio run -c platformio.visual.ini -e cyd-visual | tee receipts/target-build.txt
