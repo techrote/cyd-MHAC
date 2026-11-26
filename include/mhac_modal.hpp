@@ -9,7 +9,10 @@ class ModalChime {
     struct Voice {
         uint32_t phase[4]{};
         float amplitude[4]{};
-        uint32_t step=0;
+        // Released voices keep their last pitch. Cache the exact integer
+        // increments; moving voices refresh only when the quantized step changes.
+        uint32_t step=0, cached_step=0;
+        uint32_t increments[4]{};
         float brightness=0.f;
         unsigned excite=0;
         bool damped=false; // Safety damping is sticky until a fresh strike.
@@ -22,9 +25,13 @@ class ModalChime {
             if(inhibit) { damped=true; excite=0; }
             if(quiet()) return 0.f;
             constexpr float ratios[4]={1.f,2.01f,3.97f,5.43f};
+            if(step!=cached_step) {
+                for(unsigned j=0;j<4;++j) increments[j]=uint32_t(float(step)*ratios[j]);
+                cached_step=step;
+            }
             float modes[4];
             for(unsigned j=0;j<4;++j) {
-                phase[j]+=uint32_t(float(step)*ratios[j]);
+                phase[j]+=increments[j];
                 float& a=amplitude[j];
                 if(excite) a+=(1.f-a)*.06f;
                 else a*=1.f-(damped?.02f:(.00014f+.00018f*brightness)*float(j+1));
