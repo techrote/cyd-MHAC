@@ -48,6 +48,12 @@ int main(int argc,char** argv) {
     }
     assert(hashes[0]!=hashes[1]&&hashes[1]!=hashes[2]&&hashes[0]!=hashes[2]);
     for(unsigned q:{1u,2u,4u}) {
+        Frame f{c,0,analysis,17}; f.control.mute=false; renderStrip(f,0,q,guard.data()+1);
+        assert(guard[1+4*width+300]==rgb(64,220,150));
+        f.control.mute=true; renderStrip(f,0,q,guard.data()+1);
+        assert(guard[1+4*width+300]==rgb(255,72,48));
+    }
+    for(unsigned q:{1u,2u,4u}) {
         const auto start=std::chrono::steady_clock::now(); uint64_t sum=0;
         for(unsigned i=0;i<180;++i) for(int j=0;j<height;j+=strip) {
             renderStrip(Frame{c,i%3,analysis,i},j,q,guard.data()+1);sum+=guard[1+(i% (width*strip))];
