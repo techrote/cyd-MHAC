@@ -97,9 +97,6 @@ public:
             if(!active && env_<.0001f) env_=0.f;
             const auto step=uint32_t(hz_*(4294967296.0f/rate));
             phase_+=step; mod_+=step*2u;
-            const auto offset=int32_t(sine(mod_)*morph_*805306368.f);
-            const float a=sine(phase_), b=sine(phase_+uint32_t(offset));
-            const float original=a+(b-a)*morph_;
             // Advance detuned phases even when inactive; never reset on selection.
             const auto detune=uint32_t(float(step)*(.004f+.024f*morph_));
             swarm_lo_+=step-detune; swarm_hi_+=step+detune;
@@ -107,6 +104,17 @@ public:
                 for(unsigned j=0;j<performance_patch_count;++j) if(j!=patch && weights_[j]) {
                     --weights_[j]; ++weights_[patch]; break;
                 }
+            }
+            // Evaluate only oscillators consumed by the current mix, but keep all
+            // phase accumulators advancing. Use post-transition weights so the
+            // first sample of a newly selected patch still has its exact source.
+            const bool carrier_needed=weights_[modal_patch_index]!=256u;
+            const float a=carrier_needed?sine(phase_):0.f;
+            float original=0.f;
+            if(weights_[0] || weights_[4]) {
+                const auto offset=int32_t(sine(mod_)*morph_*805306368.f);
+                const float b=sine(phase_+uint32_t(offset));
+                original=a+(b-a)*morph_;
             }
             // Free-running 2 Hz motif clock; no dependency on control or render block cadence.
             if(++motif_phase_==motif_period) motif_phase_=0;

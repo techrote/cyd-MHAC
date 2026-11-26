@@ -6,7 +6,7 @@ Top-left visual; bottom-left sound; bottom-center-left factory bank (16 sounds; 
 bottom-center-right hold factory audition; bottom-right pitch scale.
 Bottom palette strip (x208–255 of 320): Original / Ember / Verdigris / Silver.
 Tap to cycle; release before playing. Trace retains its feature colours.
-Bottom mapping strip (x256–287 of 320): Direct, Swapped, Fine relative, Note lattice.
+Bottom mapping strip (x256–295 of 320): Direct, Swapped, Fine relative, Note lattice, Rhythm bands.
 Fine relative starts at last sound coordinates; drag at half sensitivity, lift and re-anchor.
 Mapping changes cancel quotation; the ring shows sound coordinates, not the finger in swapped/relative modes.
 A new touch still interrupts gesture quotation as elsewhere on the surface.
@@ -27,3 +27,11 @@ Each of three horizontal octave rows has 12 note cells (Free or Chromatic) or
 row to sweep timbre. Crossing an octave row changes octave and resets local
 vertical position. The Free scale is chromatic in this mapping only. Other
 mappings retain their normal scale behavior; factory audition bypasses mapping.
+
+Fifth XY mapping: Rhythm bands. Tap the mapping selector four times from Direct.
+Choose Erasure Pulse (Four Marks / Missing Mark) for the rhythmic interpretation.
+X controls pitch with the existing scale; the four Y bands select stable timbre
+levels 0, 1/3, 2/3, full. The second motif onset fades as you move upward.
+Four tiny marks on the left of each band show nominal onset gains, not a live
+beat meter. Other patches use the same bands as stepped timbre. The audio
+motif clock runs independently. Factory audition still bypasses mapping.

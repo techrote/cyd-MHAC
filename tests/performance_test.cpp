@@ -87,6 +87,7 @@ static void mappingIntegration() {
     ui.expire(t+101);
     assert(ui.control().mute && !ui.control().gate);
     t+=102; touch(false,0,0); tap(270,230); assert(ui.mapping()==XYMap::Lattice && ui.control().mute);
+    tap(270,230); assert(ui.mapping()==XYMap::Rhythm && ui.control().mute);
     tap(270,230); assert(ui.mapping()==XYMap::Direct && ui.control().mute);
     Frame f{}; std::array<uint16_t,width*strip> pixels{};
     for(unsigned i=0;i<xy_map_count;++i) for(unsigned q:{1u,2u,4u}) {
@@ -95,7 +96,7 @@ static void mappingIntegration() {
         for(unsigned k=0;k<xy_map_count;++k)
             assert(pixels[256+8*k]==(i==k?rgb(180,162,240):rgb(65,80,94)));
     }
-    std::puts("mapping integration PASS: silent selection, swapped XY, fine re-anchor, stale mute, 48 indicator checks");
+    std::puts("mapping integration PASS: silent selection, swapped XY, fine re-anchor, stale mute, 75 indicator checks");
 }
 static void latticeIntegration(const char* capture) {
     PerformanceSurface ui; uint32_t t=0;

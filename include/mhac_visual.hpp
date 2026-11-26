@@ -19,7 +19,7 @@ class Surface {
     uint32_t last_=0, trips_=0; bool watchdog_=false;
     Scale scale_=Scale::Free; unsigned raw_x_=2048;
     Palette palette_=Palette::Original;
-    XYMap mapping_=XYMap::Direct; XYMapper mapper_; LatticeCell lattice_{};
+    XYMap mapping_=XYMap::Direct; XYMapper mapper_; LatticeCell lattice_{}; unsigned rhythm_=0;
     FactorySelection factory_; bool audition_=false;
 public:
     Control control() const noexcept { return c_; }
@@ -84,6 +84,15 @@ public:
             c_.gate=count_>=2 && !c_.mute;
             return;
         }
+        if(mapping_==XYMap::Rhythm) {
+            rhythm_=rhythmTracked(y,rhythm_,count_==0);
+            const auto point=touchPoint(x,y);
+            if(count_<2) ++count_;
+            raw_x_=count_==1?point.x:(raw_x_+point.x*3u+2u)/4u;
+            c_.x=mapPitch(raw_x_,scale_); c_.y=rhythmValue(rhythm_);
+            c_.gate=count_>=2 && !c_.mute;
+            return;
+        }
         const auto point=touchPoint(x,y);
         if(fresh) mapper_.begin(point,{raw_x_,c_.y});
         const auto target=mapper_.target(mapping_,point);
@@ -108,6 +117,8 @@ inline uint16_t rgb(int r,int g,int b) noexcept {
 inline LatticeCursor frameCursor(const Frame& f) noexcept {
     if(f.mapping==XYMap::Lattice && !f.factory_audition)
         return latticeCursor(f.control.x,f.control.y,f.scale);
+    if(f.mapping==XYMap::Rhythm && !f.factory_audition)
+        return {int(f.control.x*319/4095),rhythmCenter(rhythmNearest(f.control.y))};
     return {int(f.control.x*319/4095),239-int(f.control.y*239/4095)};
 }
 inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcept {
@@ -161,6 +172,19 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
         if(mark==2) { r=(r+100)/2; g=(g+190)/2; b=(b+210)/2; }
         if(mark==1) { r=(r+60)/2; g=(g+100)/2; b=(b+130)/2; }
     }
+    // Static band landmarks and nominal motif weights, not a live beat meter.
+    if(f.mapping==XYMap::Rhythm) {
+        const unsigned band=rhythmBand(y);
+        if(y%60<4) { r=(r+90)/2; g=(g+160)/2; b=(b+190)/2; }
+        if(x>=8 && x<52 && y%60>=28 && y%60<36 && f.control.patch==unsigned(mhac::Patch::ErasurePulse)) {
+            const unsigned onset=unsigned(x-8)/12u;
+            if((x-8)%12<8) {
+                // Nominal gain at each onset, drawn as brightness, not PCM.
+                const unsigned gain=onset==0?255u:onset==1?255u-band*85u:onset==2?204u:166u-band*27u;
+                r=int(gain/2u)+18; g=int(gain*3u/4u)+18; b=int(gain)+18;
+            }
+        }
+    }
     const int d2=dx*dx+dy*dy;
     if(d2>=72 && d2<=125) { r=180;g=235;b=225; }
     if(f.control.gate && d2<16) { r=255;g=255;b=255; }
@@ -203,8 +227,8 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
         if(y>=232 && index!=f.palette) return rgb(12,20,28);
         const auto c=paletteSwatch(index); return rgb(c.r,c.g,c.b);
     }
-    // Four aligned mapping bars: Direct, Swapped, Fine relative, Note lattice.
-    if(x>=256 && x<288 && y>=224 && y<236) {
+    // Five aligned mapping bars: Direct, Swapped, Fine, Lattice, Rhythm.
+    if(x>=256 && x<296 && y>=224 && y<236) {
         const unsigned i=unsigned(x-256)/8;
         return i==unsigned(f.mapping)?rgb(180,162,240):rgb(65,80,94);
     }
