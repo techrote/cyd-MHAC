@@ -37,6 +37,7 @@ void mhac_ui_begin() {
 void mhac_ui_tick() {
     if(!ready) return;
     const uint32_t now=millis(); ui.expire(now);
+    ui.observeWatchdog(mhac::exchange.watchdog_trips.load(std::memory_order_relaxed));
     if(mhac::audio_errors.load(std::memory_order_relaxed)!=0) fault=true;
     if(fault || digitalRead(0)==LOW) ui.forceMute();
     if(uint32_t(now-lastPoll)>=8) {
@@ -44,8 +45,9 @@ void mhac_ui_tick() {
         cal.landscape(p.x,p.y,x,y); ui.sample(p.z>=400,x,y,now);
         if(fault || digitalRead(0)==LOW) ui.forceMute();
     }
+    ui.observeWatchdog(mhac::exchange.watchdog_trips.load(std::memory_order_relaxed));
     publish();
-    if(row==0) { frame={ui.control(),ui.mode(),mhac::exchange.snapshot(),now/25}; frameStart=micros(); maxStripUs=0; }
+    if(row==0) { frame={ui.control(),ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched()}; frameStart=micros(); maxStripUs=0; }
     const uint32_t start=micros();
     renderStrip(frame,row,quality,pixels); lcd.pushImage(0,row,width,strip,pixels);
     maxStripUs=std::max(maxStripUs,uint32_t(micros()-start));
@@ -56,8 +58,8 @@ void mhac_ui_tick() {
         else if(quality==4 && frameUs<55000 && maxStripUs<3000) { if(++fastFrames>=60) { quality=2;fastFrames=0; } }
         else fastFrames=0;
         // Low-rate telemetry only while silent and when the UART has space.
-        if(frames%120==0 && !ui.control().gate && Serial.availableForWrite()>=96)
-            Serial.printf("visual frame_us=%lu strip_us=%lu step=%u blocks=%lu errors=%lu\n",(unsigned long)frameUs,(unsigned long)maxStripUs,quality,(unsigned long)mhac::audio_blocks.load(),(unsigned long)mhac::audio_errors.load());
+        if(frames%120==0 && !ui.control().gate && Serial.availableForWrite()>=120)
+            Serial.printf("visual frame_us=%lu strip_us=%lu step=%u blocks=%lu errors=%lu watchdog=%lu\n",(unsigned long)frameUs,(unsigned long)maxStripUs,quality,(unsigned long)mhac::audio_blocks.load(),(unsigned long)mhac::audio_errors.load(),(unsigned long)mhac::exchange.watchdog_trips.load());
     }
 }
 #endif

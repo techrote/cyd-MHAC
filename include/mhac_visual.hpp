@@ -4,6 +4,7 @@
 #include <cstdlib>
 namespace mhac::visual {
 constexpr int width=320, height=240, strip=8;
+constexpr unsigned mode_count=5;
 struct Control { unsigned x=2048,y=2048; bool gate=false,mute=true; };
 struct Calibration {
     int left=200,right=3900,top=3900,bottom=200;
@@ -17,10 +18,14 @@ struct Calibration {
 };
 class Surface {
     Control c_{}; unsigned mode_=0, count_=0; bool held_=false, blocked_=false;
-    uint32_t last_=0;
+    uint32_t last_=0, trips_=0; bool watchdog_=false;
 public:
     Control control() const noexcept { return c_; }
     unsigned mode() const noexcept { return mode_; }
+    bool watchdogLatched() const noexcept { return watchdog_; }
+    void observeWatchdog(uint32_t trips) noexcept {
+        if(trips!=trips_) { trips_=trips; watchdog_=true; forceMute(); }
+    }
     void forceMute() noexcept { c_.mute=true; c_.gate=false; blocked_=true; count_=0; }
     void expire(uint32_t now) noexcept {
         if(held_ && uint32_t(now-last_)>100) { forceMute(); held_=false; }
@@ -32,7 +37,7 @@ public:
         if(blocked_) return;
         const bool fresh=!held_; held_=true;
         if(fresh && y<24 && (x<24 || x>=width-24)) {
-            if(x<24) mode_=(mode_+1)%3; else c_.mute=!c_.mute;
+            if(x<24) mode_=(mode_+1)%mode_count; else { c_.mute=!c_.mute; if(!c_.mute) watchdog_=false; }
             c_.gate=false; blocked_=true; return;
         }
         if(count_<2) ++count_;
@@ -43,7 +48,7 @@ public:
     }
 };
 struct Frame {
-    Control control{}; unsigned mode=0; uint32_t analysis=0, tick=0;
+    Control control{}; unsigned mode=0; uint32_t analysis=0, tick=0; bool watchdog=false;
 };
 inline int tri(int v) noexcept { const unsigned u=unsigned(v)&255u; return int(u<128?u*2:(255-u)*2); }
 inline uint16_t rgb(int r,int g,int b) noexcept {
@@ -61,18 +66,33 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
         const int u=std::abs(x-160), w=std::abs(y-120), p=std::min(u,w), q=std::max(u,w);
         v=tri((q+p)*4+t*2+ph) ^ tri((q-p)*9-int(f.control.y>>5));
         r=v*(130+a/2)/255; g=tri(v+int(f.control.x>>5))/3; b=v;
-    } else { // Glyph: quantised phase weave; abstract, not decoded symbols.
+    } else if(f.mode==2) { // Glyph: quantised phase weave; abstract, not decoded symbols.
         const int u=x/12, w=y/12, local=(x%12-6)*(x%12-6)+(y%12-6)*(y%12-6);
         const int k=tri(u*19+w*31+t+ph), h=tri(u*47-w*13-t);
         v=(local<10+(k>>4) && ((k^h)&64))?k:tri(x+y+t)/12;
         r=v; g=v*(110+a/2)/255; b=v/5+a/8;
+    } else if(f.mode==3) { // Orbit: curved resonant shells centred on the gesture.
+        const int radius=(dx*dx+dy*dy)/96;
+        const int twist=tri((dx+dy)*2+t*2)-128;
+        const int shell=tri(radius-t*4+ph+twist/4);
+        const int veil=tri((dx-dy)*3+t+ph);
+        v=std::max(0,shell-180)*3;
+        r=v*(160+a/3)/255; g=(v+veil/7)*(110+a/2)/255; b=veil/5+v/4;
+    } else { // Loom: warped threads with an interleaved colour structure.
+        const int u=dx+ (tri(dy*3+t+ph)-128)/3;
+        const int w=dy+ (tri(dx*2-t*2)-128)/3;
+        const int warp=tri(u*11+ph), weft=tri(w*13-t*2);
+        const bool over=((unsigned(u/12)^unsigned(w/12))&1u)!=0;
+        const int thread=over?warp:weft, under=over?weft:warp;
+        v=std::max(0,thread-150)*2;
+        r=(over?v/5:v)+under/10; g=v*(95+a/2)/255; b=(over?v:v/4)+under/12;
     }
     const int d2=dx*dx+dy*dy;
     if(d2>=72 && d2<=125) { r=180;g=235;b=225; }
     if(f.control.gate && d2<16) { r=255;g=255;b=255; }
     // Tiny controls, visible without covering the performance surface.
     if(x<24 && y<24 && (x==4||x==19||y==4||y==19) && x>=4&&x<=19&&y>=4&&y<=19) return rgb(130,180,210);
-    if(x>=296 && y<24 && x>=300&&x<=315&&y>=4&&y<=19 && (x<304||x>=312||y<8||y>=16|| (f.control.mute&&std::abs((x-300)-(y-4))<=2))) return f.control.mute?rgb(255,72,48):rgb(64,220,150);
+    if(x>=296 && y<24 && x>=300&&x<=315&&y>=4&&y<=19 && (x<304||x>=312||y<8||y>=16|| (f.control.mute&&std::abs((x-300)-(y-4))<=2))) return f.control.mute?(f.watchdog?rgb(255,184,32):rgb(255,72,48)):rgb(64,220,150);
     return rgb(r,g,b);
 }
 // Caller provides exactly width*strip words. Last strip is always full (240/8).

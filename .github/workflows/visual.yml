@@ -6,6 +6,9 @@ on:
       - 'include/mhac_visual.hpp'
       - 'src/mhac_visual_cyd.cpp'
       - 'tests/visual_test.cpp'
+      - 'tests/visual_002_test.cpp'
+      - 'include/mhac_audio.hpp'
+      - 'src/main.cpp'
       - 'platformio.visual.ini'
       - '.github/workflows/visual.yml'
 permissions:
@@ -24,6 +27,9 @@ jobs:
           git rev-parse HEAD > receipts/source-sha.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/visual_test.cpp -o /tmp/visual_test
           /tmp/visual_test receipts | tee receipts/host-replay.txt
+          mkdir -p receipts/five-modes
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/visual_002_test.cpp -o /tmp/visual_002_test
+          /tmp/visual_002_test receipts/five-modes | tee receipts/host-visual-002.txt
       - name: Target compile
         run: |
           python3 -m venv /tmp/pio

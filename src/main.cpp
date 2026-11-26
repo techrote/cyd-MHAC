@@ -53,11 +53,12 @@ void __attribute__((weak)) mhac_ui_tick() {
     // Explicit keyboard gate: 1/2/3 select low/mid/high preset, 0 releases, m mutes.
     // Bounded work; no serial operations on audio task.
     static uint32_t last=0; static bool sounding=false;
+    static unsigned preset=0;
     for(unsigned i=0;i<16 && Serial.available();++i) {
         const int c=Serial.read();
         if(c>='1' && c<='3') {
-            const unsigned k=unsigned(c-'1');
-            mhac::exchange.publish(512+k*1024, k*1800,true,false);
+            preset=unsigned(c-'1');
+            mhac::exchange.publish(512+preset*1024, preset*1800,true,false);
             sounding=true; last=millis();
         } else if(c=='0' || c=='m') {
             mhac::exchange.publish(512,0,false,c=='m'); sounding=false;
@@ -65,6 +66,9 @@ void __attribute__((weak)) mhac_ui_tick() {
     }
     if(sounding && uint32_t(millis()-last)>=2000) {
         mhac::exchange.publish(512,0,false,true); sounding=false;
+    } else if(sounding) {
+        // Renew only while the diagnostic UI is running, never from audio_task.
+        mhac::exchange.publish(512+preset*1024,preset*1800,true,false);
     }
 }
 void setup() {

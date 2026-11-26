@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Host regression
         run: |
-          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/audio_test.cpp -o /tmp/audio_test
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread -Iinclude tests/audio_test.cpp -o /tmp/audio_test
           /tmp/audio_test
       - name: Target compile
         run: |
