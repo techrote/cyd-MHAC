@@ -29,6 +29,7 @@ struct Resources {
 struct UI {
     PerformanceSurface surface;
     InkField ink;
+    CellularField cellular;
     Trace trace;
     bool held=false, captured=false, running=true;
     int x=0,y=0;
@@ -78,7 +79,8 @@ struct UI {
         mhac::AudioFeatures latest{};
         if(audio.exchange.features.read(latest)) trace.observe(latest,now);
         Frame f{c,surface.mode(),audio.exchange.snapshot(),now/25,surface.watchdogLatched(),
-                &ink,surface.scale(),&trace,trace.fresh(now),surface.loopState(),surface.factoryIndex(),surface.factoryAudition(),surface.palette(),surface.mapping()};
+                &ink,surface.scale(),&trace,trace.fresh(now),surface.loopState(),surface.factoryIndex(),surface.factoryAudition(),surface.palette(),surface.mapping(),&cellular};
+        cellular.advance(now,f.mode==cellular_mode,c.x,c.y,c.gate&&!c.mute,f.analysis&4095u);
         if(f.mode==5) ink.advance(now,c.x,c.y,c.gate&&!c.mute,f.analysis&4095u);
         return f;
     }

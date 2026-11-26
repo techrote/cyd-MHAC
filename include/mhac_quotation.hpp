@@ -17,7 +17,12 @@ public:
         if(inhibit) { filled_=0; cursor_=0; until_=0; }
         if(capture && !inhibit) {
             if(until_==0) {
-                if(filled_==0) { target_={step,y}; step_=step; timbre_=y; phase_=phase-step; }
+                if(filled_==0) {
+                    target_={step,y};
+                    // A rapid rearm can overlap the invalidated voice's fade.
+                    // Do not reset its audible phase; only seed a silent voice.
+                    if(blend_==0.f) { step_=step; timbre_=y; phase_=phase-step; }
+                }
                 if(filled_==4) { target_=marks_[cursor_]; heard_=true; }
                 marks_[cursor_]={step,y}; cursor_=(cursor_+1u)&3u;
                 if(filled_<4) ++filled_;

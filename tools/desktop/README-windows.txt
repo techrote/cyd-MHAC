@@ -50,3 +50,10 @@ Eighth synthesis engine: Quotation. From Phase Morph, tap bottom-left seven
  top-center UI gesture looper. Experimental session-only engine; factory
  bank and storage formats remain unchanged. Factory selection returns to
  a legacy patch.
+
+Eleventh visual engine: Cellular. From Resonance, tap top-left ten times.
+ A 40x30 excitable field propagates through a 16-state refractory cycle.
+ Hold and drag to seed new fronts; measured aggregate PCM peak changes the
+ excitation threshold. The visual clock is independent of the audio clock.
+ Leaving and re-entering resets the field on the next observed frame.
+ Decorative generative art, not a simulation of sound propagation.
