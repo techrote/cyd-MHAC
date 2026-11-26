@@ -1,9 +1,11 @@
 #include <Arduino.h>
 #include <driver/i2s.h>
+#include <esp_timer.h>
 #include "mhac_platform.hpp"
 
 namespace mhac {
 Exchange exchange;
+TimingMailbox audio_timing;
 std::atomic<uint32_t> audio_blocks{0}, audio_errors{0};
 }
 static mhac::Engine engine;
@@ -11,16 +13,23 @@ static constexpr i2s_port_t port = I2S_NUM_0;
 static void audio_task(void*) {
     int16_t samples[mhac::block];
     uint16_t slots[mhac::block*2];
+    mhac::TimingMeter timing(mhac::audio_block_budget_us);
     for (;;) {
+        const auto start=uint32_t(esp_timer_get_time());
         engine.render(mhac::exchange,samples,mhac::block);
+        const auto rendered=uint32_t(esp_timer_get_time());
         for(unsigned i=0;i<mhac::block;++i) {
             const auto u=uint16_t((int32_t(samples[i])+32768)&0xff00);
             slots[i*2]=slots[i*2+1]=u;
         }
         size_t written=0;
         // Blocking only on hardware DMA in dedicated task, not in DSP render.
+        const auto prepared=uint32_t(esp_timer_get_time());
         const auto rc=i2s_write(port,slots,sizeof(slots),&written,pdMS_TO_TICKS(30));
-        if(rc!=ESP_OK || written!=sizeof(slots)) {
+        const auto end=uint32_t(esp_timer_get_time());
+        const bool ok=rc==ESP_OK && written==sizeof(slots);
+        timing.record(start,rendered,prepared,end,ok,mhac::audio_timing);
+        if(!ok) {
             mhac::audio_errors.fetch_add(1,std::memory_order_relaxed);
             i2s_stop(port);
             i2s_set_dac_mode(I2S_DAC_CHANNEL_DISABLE);
@@ -64,6 +73,15 @@ void __attribute__((weak)) mhac_ui_tick() {
             preset=unsigned(c-'1');
             play();
             sounding=true; last=millis();
+        } else if(c=='d') {
+            mhac::AudioTiming t{};
+            if(mhac::audio_timing.read(t)) {
+                Serial.printf("timing attempts=%lu failed=%lu prep_over=%lu long_gap=%lu max_us render=%lu prep=%lu write=%lu gap=%lu\n",
+                    (unsigned long)t.attempts,(unsigned long)t.failed_writes,
+                    (unsigned long)t.prepare_over_budget,(unsigned long)t.long_start_gaps,
+                    (unsigned long)t.max_render_us,(unsigned long)t.max_prepare_us,
+                    (unsigned long)t.max_write_us,(unsigned long)t.max_start_gap_us);
+            } else Serial.println("timing unavailable; retry");
         } else if(c=='0' || c=='m') {
             mhac::exchange.publish_patch(512,0,false,c=='m',static_cast<mhac::Patch>(preset<3?0:preset-2)); sounding=false;
         }
@@ -78,7 +96,7 @@ void __attribute__((weak)) mhac_ui_tick() {
 void setup() {
     Serial.begin(115200);
     const bool ready=audio_begin();
-    Serial.println(ready?"MHAC audio initialized; serial 1-8, 0, m":"MHAC audio initialization FAILED");
+    Serial.println(ready?"MHAC audio initialized; serial 1-8, 0, m, d":"MHAC audio initialization FAILED");
     mhac_ui_begin();
 }
 void loop() { mhac_ui_tick(); delay(1); }
