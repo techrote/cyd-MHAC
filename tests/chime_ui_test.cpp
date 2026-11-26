@@ -35,13 +35,33 @@ int main() {
     render(false,false,32); const auto restrike=render(true,false,8);
     assert(restrike>0); render(false,true,128); assert(render(false,true,8)==0);
     assert(io.watchdog_trips.load()==0);
-    uint64_t idle=0, loud=0;
+    // A new engine isolates a natural lift and a one-block mute, with no UI gate.
+    mhac::Engine tail; mhac::Exchange tail_io;
+    auto tailBlock=[&](bool gate,bool mute) {
+        publishControl(tail_io,Control{1200,0,gate,mute,6});
+        tail.render(tail_io,pcm.data(),pcm.size());
+        unsigned peak=0;
+        for(int v:pcm) peak=std::max(peak,unsigned(std::abs(v)));
+        assert((tail_io.snapshot()&4095u)==peak/2);
+        return peak;
+    };
+    for(unsigned k=0;k<16;++k) tailBlock(true,false);
+    unsigned released=0;
+    for(unsigned k=0;k<80;++k) released=tailBlock(false,false);
+    assert(released>64);
+    tailBlock(false,true);
+    for(unsigned k=0;k<64;++k) tailBlock(false,false);
+    assert(tailBlock(false,false)==0);
+    assert(tail_io.watchdog_trips.load()==0);
+    uint64_t idle=0, quiet=0, loud=0;
     for(int y=0;y<240;++y) for(int x=0;x<320;++x) {
         const auto a=chimeShade(x-160,y-120,4095,0,17,2);
         const auto b=chimeShade(x-160,y-120,4095,4095,17,2);
-        for(auto s:{a,b}) {assert(s.r>=0&&s.r<=255&&s.g>=0&&s.g<=255&&s.b>=0&&s.b<=255);}
-        idle+=a.r+a.g+a.b; loud+=b.r+b.g+b.b;
+        const auto q=chimeShade(x-160,y-120,4095,released/2,17,2);
+        for(auto s:{a,q,b}) {assert(s.r>=0&&s.r<=255&&s.g>=0&&s.g<=255&&s.b>=0&&s.b<=255);}
+        idle+=a.r+a.g+a.b; quiet+=q.r+q.g+q.b; loud+=b.r+b.g+b.b;
     }
-    assert(loud>idle);
+    assert(loud>quiet && quiet>idle);
+    std::printf("post-lift peak=%u; shade sums=%llu/%llu/%llu; mute silence PASS\n",released,(unsigned long long)idle,(unsigned long long)quiet,(unsigned long long)loud);
     std::printf("chime UI PASS: 40 control words, %u selector pixels, strike=%u restrike=%u, shade sums=%llu/%llu\n",region,strike,restrike,(unsigned long long)idle,(unsigned long long)loud);
 }

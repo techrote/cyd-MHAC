@@ -6,7 +6,7 @@
 #include <algorithm>
 using namespace mhac;
 static std::vector<int16_t> render(unsigned x,unsigned y,bool split,bool retrigger) {
-    Exchange io; Engine e; std::vector<int16_t> v(rate*3);
+    Exchange io; Engine e; std::vector<int16_t> v(rate*5);
     for(unsigned k=0;k<v.size();k+=block) {
         const unsigned n=std::min<unsigned>(block,v.size()-k);
         const bool gate=k<rate*2 && (!retrigger || k<rate/2 || k>=rate);
@@ -15,14 +15,80 @@ static std::vector<int16_t> render(unsigned x,unsigned y,bool split,bool retrigg
         else e.render(io,v.data()+k,n);
     }
     for(auto s:v) assert(s>=-8191 && s<=8191);
-    for(unsigned i=rate*2+6000;i<v.size();++i) assert(v[i]==0);
+    for(unsigned i=rate*4+6000;i<v.size();++i) assert(v[i]==0);
     assert(io.watchdog_trips.load()==0);
     return v;
 }
 static uint64_t energy(const std::vector<int16_t>& v,unsigned a,unsigned b) {
     uint64_t sum=0; for(unsigned i=a;i<b;++i) sum+=int64_t(v[i])*v[i]; return sum;
 }
+// Direct voice tests isolate the modal bank from the existing global gate envelope.
+static void overlap_test() {
+    auto sine=[](uint32_t p) { return std::sin(float(p>>16)*6.28318530718f/65536.f); };
+    constexpr uint32_t lo=19685267u, hi=78405362u;
+    ModalChime both, tail, fresh;
+    for(unsigned i=0;i<128;++i) {
+        assert(both.sample(lo,.2f,true,sine)==tail.sample(lo,.2f,true,sine));
+    }
+    for(unsigned i=0;i<32;++i) {
+        assert(both.sample(lo,.2f,false,sine)==tail.sample(lo,.2f,false,sine));
+    }
+    double tail_energy=0, new_energy=0;
+    for(unsigned i=0;i<1024;++i) {
+        float a=both.sample(hi,.8f,true,sine);
+        // Released voice ignores incoming pitch/brightness.
+        float b=tail.sample(0,.99f,false,sine);
+        float c=fresh.sample(hi,.8f,true,sine);
+        assert(std::fabs(a-b-c)<2e-7f);
+        assert(std::fabs(a)<=1.f);
+        tail_energy+=b*b; new_energy+=c*c;
+    }
+    assert(tail_energy>1. && new_energy>1.);
+    // Constant phase probe isolates amplitude continuity from oscillator motion.
+    auto unity=[](uint32_t) { return 1.f; };
+    ModalChime steal; float last=0.f;
+    for(unsigned i=0;i<12000;++i) {
+        bool gate=i%129u!=128u;
+        float v=steal.sample(hi,.4f,gate,unity);
+        assert(v>=0.f && v<=1.f);
+        assert(std::fabs(v-last)<=.061f); last=v;
+    }
+    // Inhibit while input stays held, then verify silence and fresh rearm.
+    for(unsigned i=0;i<1024;++i) last=steal.sample(hi,.4f,true,unity,true);
+    assert(last==0.f);
+    ModalChime clean;
+    for(unsigned i=0;i<256;++i)
+        assert(steal.sample(lo,.2f,true,sine)==clean.sample(lo,.2f,true,sine));
+    std::printf("PASS two-voice pitch lock/additivity (1024 samples), 12000 stealing continuity samples, inhibit/rearm; tail energy %.3f new %.3f\n",tail_energy,new_energy);
+}
+// A released strike must ring without contact, but mute/watchdog/deselection
+// must not turn a safety-damped tail back into a normal decay.
+static void independent_release_test() {
+    Exchange io; Engine e; std::array<int16_t,block> a{};
+    auto tick=[&](bool gate,bool mute) {
+        io.publish_modal(0,0,gate,mute); e.render(io,a.data(),block);
+        uint64_t sum=0; for(auto s:a) sum+=int64_t(s)*s; return sum;
+    };
+    for(unsigned k=0;k<8;++k) tick(true,false);
+    uint64_t late=0;
+    for(unsigned k=0;k<64;++k) { auto v=tick(false,false); if(k>=48) late+=v; }
+    assert(late>100000u); // 256–341 ms after lift, not a global gate fade.
+    tick(false,true);
+    for(unsigned k=0;k<16;++k) tick(false,false);
+    assert(tick(false,false)==0); // a single mute block permanently damps this strike
+    for(unsigned k=0;k<32;++k) assert(tick(false,false)==0);
+    assert(tick(true,false)>0);
+    // A stale held gate must not ring indefinitely or rearm on a heartbeat alone.
+    for(unsigned k=0;k<120;++k) e.render(io,a.data(),block);
+    assert(io.watchdog_trips.load()==1);
+    assert(tick(true,false)==0);
+    assert(tick(false,false)==0);
+    assert(tick(true,false)>0);
+    std::printf("PASS independent release, latched safety damping, lease expiry and fresh strike; late energy %llu\n",static_cast<unsigned long long>(late));
+}
 int main(int argc,char** argv) {
+    independent_release_test();
+    overlap_test();
     unsigned count=0;
     for(unsigned x:{0u,2048u,4095u}) for(unsigned y:{0u,2048u,4095u}) {
         auto v=render(x,y,false,false); assert(v==render(x,y,true,false));
