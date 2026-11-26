@@ -61,6 +61,50 @@ int main(int argc,char** argv) {
         const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count()/180;
         std::cout<<"step "<<q<<" host render ms/frame "<<ms<<" checksum "<<sum<<'\n';
     }
+    // The palette selector must consume a whole contact, not trigger sound or alter its coordinates.
+    Surface ps;
+    uint32_t pt=0;
+    for(bool muted:{true,false}) {
+        if(!muted) { ps.sample(true,310,10,pt+=8); ps.sample(false,0,0,pt+=8); }
+        const auto before=ps.control(); assert(before.mute==muted);
+        for(unsigned i=0;i<4000;++i) {
+            ps.sample(true,230,228,pt+=8);
+            ps.sample(true,160,100,pt+=8);
+            const auto after=ps.control();
+            assert(unsigned(ps.palette())==(i+1)%palette_count);
+            assert(!after.gate && after.mute==before.mute && after.patch==before.patch && after.x==before.x && after.y==before.y);
+            ps.sample(false,0,0,pt+=8);
+        }
+    }
+    uint64_t paletteHashes[palette_count]{};
+    for(unsigned i=0;i<palette_count;++i) {
+        Frame f{c,0,analysis,17}; f.palette=static_cast<Palette>(i);
+        std::ofstream out;
+        if(argc==2) { out.open(std::string(argv[1])+"/palette-"+paletteName(f.palette)+".ppm",std::ios::binary); assert(out); out<<"P6\n320 240\n255\n"; }
+        uint64_t h=14695981039346656037ull;
+        for(int j=0;j<height;j+=strip) {
+            renderStrip(f,j,1,guard.data()+1);
+            for(int k=1;k<=width*strip;++k) {
+                const auto v=guard[k]; h=(h^v)*1099511628211ull;
+                if(out.is_open()) { const unsigned char rgb8[]={static_cast<unsigned char>(((v>>11)&31)*255/31),static_cast<unsigned char>(((v>>5)&63)*255/63),static_cast<unsigned char>((v&31)*255/31)}; out.write(reinterpret_cast<const char*>(rgb8),3); }
+            }
+        }
+        paletteHashes[i]=h;
+        for(unsigned j=0;j<i;++j) assert(paletteHashes[j]!=h);
+        for(unsigned q:{1u,2u,4u}) {
+            f.control.mute=true;
+            renderStrip(f,0,q,guard.data()+1); assert(guard[1+4*width+300]==rgb(255,72,48));
+            renderStrip(f,224,q,guard.data()+1);
+            const auto sw=paletteSwatch(f.palette);
+            assert(guard[1+216+8*i]==rgb(sw.r,sw.g,sw.b));
+            assert(guard.front()==0x1234&&guard.back()==0x5678);
+        }
+        f.mode=6; Frame original=f; original.palette=Palette::Original;
+        for(int y=0;y<height;++y) for(int x=0;x<width;++x)
+            if(!(x>=216&&x<248&&y>=224&&y<236)) assert(pixel(f,x,y)==pixel(original,x,y));
+        std::cout<<"palette "<<paletteName(f.palette)<<" hash "<<std::hex<<h<<std::dec<<'\n';
+    }
+    std::cout<<"PASS 8000 safe palette contacts, four actual DSP-driven captures, unchanged Trace and mute overlays\n";
     s.sample(false,0,0,220); assert(!s.control().gate); s.forceMute();assert(s.control().mute);
     std::cout<<"PASS visual replay, real DSP snapshot, bounds and release\n";
 }

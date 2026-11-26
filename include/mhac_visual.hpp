@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include "mhac_calibration.hpp"
+#include "mhac_palette.hpp"
 #include "mhac_ink.hpp"
 #include "mhac_scale.hpp"
 #include "mhac_trace.hpp"
@@ -15,11 +16,13 @@ class Surface {
     Control c_{}; unsigned mode_=0, count_=0; bool held_=false, blocked_=false;
     uint32_t last_=0, trips_=0; bool watchdog_=false;
     Scale scale_=Scale::Free; unsigned raw_x_=2048;
+    Palette palette_=Palette::Original;
     FactorySelection factory_; bool audition_=false;
 public:
     Control control() const noexcept { return c_; }
     unsigned mode() const noexcept { return mode_; }
     Scale scale() const noexcept { return scale_; }
+    Palette palette() const noexcept { return palette_; }
     unsigned factoryIndex() const noexcept { return factory_.index(); }
     bool factoryAudition() const noexcept { return audition_ && c_.gate; }
     bool watchdogLatched() const noexcept { return watchdog_; }
@@ -39,6 +42,9 @@ public:
         if(fresh && y<24 && (x<24 || x>=width-24)) {
             if(x<24) mode_=(mode_+1)%mode_count; else { c_.mute=!c_.mute; if(!c_.mute) watchdog_=false; }
             c_.gate=false; blocked_=true; return;
+        }
+        if(fresh && paletteSelector(x,y)) {
+            palette_=nextPalette(palette_); c_.gate=false; blocked_=true; return;
         }
         if(fresh && soundSelector(x,y)) {
             c_.patch=(c_.patch+1)%sound_count; mode_=paired_mode[c_.patch];
@@ -73,6 +79,7 @@ public:
 struct Frame {
     Control control{}; unsigned mode=0; uint32_t analysis=0, tick=0; bool watchdog=false; const InkField* ink=nullptr; Scale scale=Scale::Free; const Trace* trace=nullptr; bool trace_fresh=false; GestureLoop::State loop_state=GestureLoop::State::Idle;
     unsigned factory_index=factory_count; bool factory_audition=false;
+    Palette palette=Palette::Original;
 };
 inline int tri(int v) noexcept { const unsigned u=unsigned(v)&255u; return int(u<128?u*2:(255-u)*2); }
 inline uint16_t rgb(int r,int g,int b) noexcept {
@@ -120,6 +127,10 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
         const auto s=f.trace?f.trace->shade(x,y):Trace::Shade{5,8,15};
         r=s.r;g=s.g;b=s.b;
     }
+    // Preserve measured Trace colours and all performance/safety overlays.
+    if(f.mode!=6 && f.palette!=Palette::Original) {
+        const auto c=paletteColor(f.palette,r,g,b); r=c.r; g=c.g; b=c.b;
+    }
     const int d2=dx*dx+dy*dy;
     if(d2>=72 && d2<=125) { r=180;g=235;b=225; }
     if(f.control.gate && d2<16) { r=255;g=255;b=255; }
@@ -156,6 +167,12 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
     }
     if(x>=172 && x<188 && y>=224 && y<236)
         return f.factory_audition?rgb(64,220,150):rgb(110,156,184);
+    if(x>=216 && x<248 && y>=224 && y<236) {
+        const auto index=static_cast<Palette>(unsigned(x-216)/8);
+        if(y<232 && index!=f.palette) return rgb(38,48,58);
+        if(y>=232 && index!=f.palette) return rgb(12,20,28);
+        const auto c=paletteSwatch(index); return rgb(c.r,c.g,c.b);
+    }
     return rgb(r,g,b);
 }
 // Caller provides exactly width*strip words. Last strip is always full (240/8).

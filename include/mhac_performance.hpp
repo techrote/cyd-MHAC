@@ -11,6 +11,7 @@ public:
     Control control() const noexcept { return surface_.control(); }
     unsigned mode() const noexcept { return surface_.mode(); }
     Scale scale() const noexcept { return surface_.scale(); }
+    Palette palette() const noexcept { return surface_.palette(); }
     unsigned factoryIndex() const noexcept { return surface_.factoryIndex(); }
     bool factoryAudition() const noexcept { return surface_.factoryAudition(); }
     bool watchdogLatched() const noexcept { return surface_.watchdogLatched(); }

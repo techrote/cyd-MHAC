@@ -4,6 +4,9 @@ No CYD, DAW, MIDI, network or Python required at runtime.
 Start muted: top-right unmute; release; left mouse drag to play.
 Top-left visual; bottom-left sound; bottom-center-left factory bank (16 sounds; tap x88–159 of 320);
 bottom-center-right hold factory audition; bottom-right pitch scale.
+Bottom palette strip (x208–255 of 320): Original / Ember / Verdigris / Silver.
+Tap to cycle; release before playing. Trace retains its feature colours.
+A new touch still interrupts gesture quotation as elsewhere on the surface.
 Last four factory sounds: Stone Bell, Hollow Gong, Copper Rain, Glass Pins.
 Select does not strike; hold audition to sound after explicit unmute.
 Top-center gesture quotation; Esc mutes and cancels; Q quits.

@@ -6,6 +6,8 @@ on:
       - 'include/mhac_calibration.hpp'
       - 'tests/calibration_test.cpp'
       - 'include/mhac_visual.hpp'
+      - 'include/mhac_palette.hpp'
+      - 'tests/palette_test.cpp'
       - 'include/mhac_visual_patch.hpp'
       - 'tests/chime_ui_test.cpp'
       - 'include/mhac_factory_ui.hpp'
@@ -55,6 +57,8 @@ jobs:
           set -euo pipefail
           mkdir -p receipts
           git rev-parse HEAD > receipts/source-sha.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/palette_test.cpp -o /tmp/palette_test
+          /tmp/palette_test | tee receipts/palette-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/calibration_test.cpp -o /tmp/calibration_test
           /tmp/calibration_test | tee receipts/calibration-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/chime_ui_test.cpp -o /tmp/chime_ui_test
