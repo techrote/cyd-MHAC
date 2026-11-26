@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cmath>
 #include <algorithm>
+#include "mhac_features.hpp"
 namespace mhac {
 constexpr unsigned rate = 24000, block = 128, contract_version = 1;
 // Optional patch extension v1. Existing four-argument publishers retain phase morph.
@@ -18,6 +19,7 @@ static_assert(std::atomic<uint32_t>::is_always_lock_free, "32-bit mailbox requir
 struct Exchange {
     std::atomic<uint32_t> control{1u << 25}, analysis{0};
     std::atomic<uint32_t> heartbeat{0}, watchdog_trips{0};
+    FeatureMailbox features;
     void publish(unsigned x, unsigned y, bool gate, bool mute) noexcept {
         publish_patch(x,y,gate,mute,Patch::PhaseMorph);
     }
@@ -45,6 +47,7 @@ class Engine {
     unsigned motif_phase_=0, echo_pos_=0, echo_valid_=0;
     float rhythm_gain_=0.f;
     int16_t echo_[echo_samples]={};
+    FeatureAccumulator features_;
     static float sine(uint32_t p) noexcept {
         // Parabolic sine approximation, bounded to [-1,1].
         const float t=float(p>>16)*(1.f/32768.f)-1.f;
@@ -136,6 +139,7 @@ public:
             }
             const int v=int(8191.f*env_*sound);
             out[i]=int16_t(v); peak=std::max(peak,unsigned(v<0?-v:v));
+            features_.push(out[i],io.features);
         }
         age_+=std::min(n,remaining);
         if(requested && !expired_ && age_==control_lease_samples && n>0) {

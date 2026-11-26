@@ -8,6 +8,8 @@ on:
       - 'tests/audio_test.cpp'
       - 'tests/patch_test.cpp'
       - 'tests/extended_test.cpp'
+      - 'tests/features_test.cpp'
+      - 'tests/features_integration.cpp'
       - 'tests/legacy_compare.cpp'
       - 'tests/reference/**'
       - 'platformio.ini'
@@ -25,6 +27,7 @@ jobs:
       - name: Host regression
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p receipts
           git rev-parse HEAD > receipts/source-sha.txt
           g++ --version | tee receipts/compiler.txt
@@ -39,9 +42,14 @@ jobs:
           test "$(git hash-object tests/reference/audio_004.hpp)" = afe9c3357850123c1829370176345a9171c40f44
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/extended_test.cpp -o /tmp/extended_test
           /tmp/extended_test | tee receipts/extended-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -pthread -Iinclude tests/features_test.cpp -o /tmp/features_test
+          /tmp/features_test | tee receipts/features-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/features_integration.cpp -o /tmp/features_integration
+          /tmp/features_integration | tee receipts/features-integration.txt
       - name: Target compile
         shell: bash
         run: |
+          set -euo pipefail
           python3 -m venv /tmp/pio
           /tmp/pio/bin/pip install platformio==6.1.18
           /tmp/pio/bin/pio run -e cyd | tee receipts/target-build.txt

@@ -7,6 +7,7 @@
 #include "mhac_visual_audio.hpp"
 namespace {
 using namespace mhac::visual;
+static_assert(mhac::feature_version==1 && mhac::rate==24000 && mhac::feature_window==128,"feature contract pin required");
 static_assert(mhac::contract_version==1,"visual contract pin required");
 class Display : public lgfx::LGFX_Device {
     lgfx::Bus_SPI bus; lgfx::Panel_ILI9341_2 panel;
@@ -20,7 +21,7 @@ public:
     }
 };
 Display lcd; SPIClass touchBus(VSPI); XPT2046_Touchscreen touch(33);
-Surface ui; Calibration cal; Frame frame; InkField ink; uint16_t pixels[width*strip];
+Surface ui; Calibration cal; Frame frame; InkField ink; Trace trace; uint16_t pixels[width*strip];
 bool ready=false, fault=false; int row=0; unsigned quality=2, fastFrames=0;
 uint32_t lastPoll=0, frameStart=0, frameUs=0, maxStripUs=0, frames=0;
 void publish() { publishControl(mhac::exchange,ui.control()); }
@@ -50,7 +51,9 @@ void mhac_ui_tick() {
     if(!ui.control().gate || ui.mode()!=5) ink.disconnect();
     if(row==0) {
         frameStart=micros(); maxStripUs=0;
-        frame={ui.control(),ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched(),&ink,ui.scale()};
+        mhac::AudioFeatures latest{};
+        if(mhac::exchange.features.read(latest)) trace.observe(latest,now);
+        frame={ui.control(),ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched(),&ink,ui.scale(),&trace,trace.fresh(now)};
         if(frame.mode==5) ink.advance(now,frame.control.x,frame.control.y,frame.control.gate&&!frame.control.mute,frame.analysis&4095u);
     }
     const uint32_t start=micros();

@@ -4,6 +4,10 @@ on:
     branches: [audio/cyd-audio-001, main]
     paths:
       - 'include/mhac_visual.hpp'
+      - 'include/mhac_trace.hpp'
+      - 'include/mhac_features.hpp'
+      - 'tests/trace_test.cpp'
+      - 'tests/trace_integration.cpp'
       - 'include/mhac_scale.hpp'
       - 'tests/scale_test.cpp'
       - 'tests/extended_test.cpp'
@@ -37,6 +41,10 @@ jobs:
           git rev-parse HEAD > receipts/source-sha.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_test.cpp -o /tmp/visual_test
           /tmp/visual_test receipts | tee receipts/host-replay.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/trace_test.cpp -o /tmp/trace_test
+          /tmp/trace_test | tee receipts/trace-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/trace_integration.cpp -o /tmp/trace_integration
+          /tmp/trace_integration receipts/trace.ppm | tee receipts/trace-integration.txt
           mkdir -p receipts/five-modes
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_002_test.cpp -o /tmp/visual_002_test
           /tmp/visual_002_test receipts/five-modes | tee receipts/host-visual-002.txt
