@@ -35,3 +35,8 @@ levels 0, 1/3, 2/3, full. The second motif onset fades as you move upward.
 Four tiny marks on the left of each band show nominal onset gains, not a live
 beat meter. Other patches use the same bands as stepped timbre. The audio
 motif clock runs independently. Factory audition still bypasses mapping.
+
+Ninth visual engine: Caustic. From the initial Resonance visual, tap top-left
+ eight times (release between taps). Intersecting curved light sheets and a
+ gesture-centred ring respond to aggregate PCM peak, phase and timbre. This is
+ decorative, not a measured acoustic field. The sound selection is unchanged.

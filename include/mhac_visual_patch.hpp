@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include "mhac_audio.hpp"
 namespace mhac::visual {
-constexpr unsigned mode_count=8, sound_count=7, chime_mode=7;
+constexpr unsigned mode_count=9, sound_count=7, chime_mode=7, caustic_mode=8;
 constexpr unsigned paired_mode[sound_count]={0,1,4,3,2,5,chime_mode};
 struct Control { unsigned x=2048,y=2048; bool gate=false,mute=true; unsigned patch=0; };
 static_assert(mhac::contract_version==1 && mhac::patch_version==1 &&

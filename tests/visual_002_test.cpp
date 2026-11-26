@@ -38,5 +38,5 @@ int main(int argc,char** argv) {
         std::cout<<"mode "<<m<<" hash "<<std::hex<<h<<std::dec<<'\n';
     }
     for(unsigned q:{1u,2u,4u}){auto start=std::chrono::steady_clock::now();uint64_t sum=0;for(unsigned i=0;i<200;++i)for(int y=0;y<height;y+=strip){renderStrip(Frame{c,3+i%2,analysis,i},y,q,buf.data()+1);sum+=buf[1+i%(width*strip)];}std::cout<<"new modes step "<<q<<" ms/frame "<<std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count()/200<<" checksum "<<sum<<'\n';}
-    std::cout<<"PASS eight-mode replay and real audio watchdog/rearm\n";
+    std::cout<<"PASS nine-mode replay and real audio watchdog/rearm\n";
 }

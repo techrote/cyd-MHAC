@@ -39,6 +39,7 @@ on:
       - 'src/mhac_visual_cyd.cpp'
       - 'tests/visual_test.cpp'
       - 'tests/visual_002_test.cpp'
+      - 'tests/caustic_study.cpp'
       - 'tests/visual_003_test.cpp'
       - 'include/mhac_visual_audio.hpp'
       - 'include/mhac_audio.hpp'
@@ -83,6 +84,8 @@ jobs:
           /tmp/trace_test | tee receipts/trace-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/trace_integration.cpp -o /tmp/trace_integration
           /tmp/trace_integration receipts/trace.ppm | tee receipts/trace-integration.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/caustic_study.cpp -o /tmp/caustic_study
+          /tmp/caustic_study receipts/caustic- | tee receipts/caustic-test.txt
           mkdir -p receipts/five-modes
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_002_test.cpp -o /tmp/visual_002_test
           /tmp/visual_002_test receipts/five-modes | tee receipts/host-visual-002.txt
