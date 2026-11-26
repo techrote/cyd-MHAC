@@ -47,6 +47,35 @@ int main(int argc,char** argv) {
     // Safety invalidate; renewed capture must wait a complete new history.
     for(unsigned i=0;i<3000;++i) q.sample(phase,20000000u,1.f,0.f,false,true,sine);
     for(unsigned i=0;i<Quotation::history_samples;++i) check(q.sample(phase,20000000u,1.f,0.f,true,false,sine)==0.f,"stale history after inhibit");
+    // An inhibited tail can still have nonzero blend on a rapid rearm. Fresh
+    // history must not jump the fading oscillator to the live carrier phase.
+    unsigned retriggers=0;
+    for(unsigned gap:{1u,8u,32u,128u,512u,3000u}) {
+        for(uint32_t offset:{0u,0x40000000u,0x80000000u,0xc0000000u}) {
+            Quotation tail; uint32_t p=0; constexpr uint32_t s=20000000u;
+            for(unsigned i=0;i<2*Quotation::history_samples;++i) {
+                p+=s; tail.sample(p,s,1.f,0.f,true,false,sine);
+            }
+            for(unsigned i=0;i<gap;++i) { p+=s; tail.sample(p,s,1.f,0.f,false,true,sine); }
+            auto reference=tail;
+            p+=s;
+            const float expected=reference.sample(p,s,1.f,0.f,false,false,sine);
+            const float actual=tail.sample(p+offset,s,1.f,0.f,true,false,sine);
+            check(actual==expected,"rapid rearm reset audible fading phase");
+            for(unsigned i=1;i<Quotation::history_samples;++i) {
+                p+=s;
+                const float v=tail.sample(p+offset,s,1.f,0.f,true,false,sine);
+                check(std::abs(v)<=1.f,"rapid rearm bound");
+                if(i>=3000u) check(v==0.f,"rapid rearm reused invalidated history");
+            }
+            p+=s;
+            unsigned heard=0;
+            for(unsigned i=0;i<1000;++i) { heard+=tail.sample(p+offset,s,1.f,0.f,true,false,sine)!=0.f; p+=s; }
+            check(heard>900,"rapid rearm failed fresh recall");
+            ++retriggers;
+        }
+    }
+    std::cout<<"rapid_rearm_profiles="<<retriggers<<'\n';
     auto dry=perform(128,0,0), half=perform(128,0,2048), wet=perform(128,0,4095);
     for(unsigned y:{0u,2048u,4095u}) {
         auto a=perform(128,0,y); check(a==perform(31,0,y) && a==perform(97,0,y),"partition");
