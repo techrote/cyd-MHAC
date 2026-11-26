@@ -11,6 +11,7 @@ on:
       - 'tests/features_test.cpp'
       - 'tests/features_integration.cpp'
       - 'tests/timing_test.cpp'
+      - 'tests/preset_test.cpp'
       - 'tests/legacy_compare.cpp'
       - 'tests/reference/**'
       - 'platformio.ini'
@@ -49,6 +50,8 @@ jobs:
           /tmp/features_integration | tee receipts/features-integration.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread -Iinclude tests/timing_test.cpp -o /tmp/timing_test
           /tmp/timing_test | tee receipts/timing-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/preset_test.cpp -o /tmp/preset_test
+          /tmp/preset_test | tee receipts/preset-test.txt
       - name: Target compile
         shell: bash
         run: |

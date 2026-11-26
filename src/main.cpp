@@ -2,6 +2,8 @@
 #include <driver/i2s.h>
 #include <esp_timer.h>
 #include "mhac_platform.hpp"
+#include "mhac_presets.hpp"
+static_assert(mhac::extended_patch_count>=mhac::preset_catalog_v1,"preset catalogue requires patch IDs 0-5");
 
 namespace mhac {
 Exchange exchange;
@@ -62,17 +64,20 @@ void __attribute__((weak)) mhac_ui_tick() {
     // Explicit keyboard gate: 1/2/3 phase morph, 4–8 other modes, 0 releases, m mutes.
     // Bounded work; no serial operations on audio task.
     static uint32_t last=0; static bool sounding=false;
-    static unsigned preset=0;
-    auto play=[&] {
-        if(preset<3) mhac::exchange.publish(512+preset*1024,preset*1800,true,false);
-        else mhac::exchange.publish_patch(2300,3400,true,false,static_cast<mhac::Patch>(preset-2));
-    };
+    static mhac::SoundPreset preset{0,512,0};
+    auto selected=[&] { return static_cast<mhac::Patch>(preset.patch); };
+    auto play=[&] { mhac::exchange.publish_patch(preset.x,preset.y,true,false,selected()); };
     for(unsigned i=0;i<16 && Serial.available();++i) {
         const int c=Serial.read();
         if(c>='1' && c<='8') {
-            preset=unsigned(c-'1');
+            const unsigned key=unsigned(c-'1');
+            preset=key<3?mhac::SoundPreset{0,uint16_t(512+key*1024),uint16_t(key*1800)}:
+                         mhac::SoundPreset{uint8_t(key-2),2300,3400};
             play();
             sounding=true; last=millis();
+        } else if(c>='A' && c<='L') {
+            preset=mhac::factory_presets[unsigned(c-'A')].sound;
+            play(); sounding=true; last=millis();
         } else if(c=='d') {
             mhac::AudioTiming t{};
             if(mhac::audio_timing.read(t)) {
@@ -83,11 +88,11 @@ void __attribute__((weak)) mhac_ui_tick() {
                     (unsigned long)t.max_write_us,(unsigned long)t.max_start_gap_us);
             } else Serial.println("timing unavailable; retry");
         } else if(c=='0' || c=='m') {
-            mhac::exchange.publish_patch(512,0,false,c=='m',static_cast<mhac::Patch>(preset<3?0:preset-2)); sounding=false;
+            mhac::exchange.publish_patch(512,0,false,c=='m',selected()); sounding=false;
         }
     }
     if(sounding && uint32_t(millis()-last)>=2000) {
-        mhac::exchange.publish_patch(512,0,false,true,static_cast<mhac::Patch>(preset<3?0:preset-2)); sounding=false;
+        mhac::exchange.publish_patch(512,0,false,true,selected()); sounding=false;
     } else if(sounding) {
         // Renew only while the diagnostic UI is running, never from audio_task.
         play();
@@ -96,7 +101,7 @@ void __attribute__((weak)) mhac_ui_tick() {
 void setup() {
     Serial.begin(115200);
     const bool ready=audio_begin();
-    Serial.println(ready?"MHAC audio initialized; serial 1-8, 0, m, d":"MHAC audio initialization FAILED");
+    Serial.println(ready?"MHAC audio initialized; serial 1-8, A-L, 0, m, d":"MHAC audio initialization FAILED");
     mhac_ui_begin();
 }
 void loop() { mhac_ui_tick(); delay(1); }
