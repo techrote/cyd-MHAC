@@ -1,0 +1,14 @@
+# CYD-AUDIO-002 — independent gate lease (Refs #1, #2, #4)
+
+Parent 805043539d66b3f5caa60595c012e10b86142c50; visual reference 8636680cf70ddc85236ffe81f50fc81b3fcd0ab5. Both previous exact-head target builds succeeded (runs 45727404278 and 45730369618); neither is physical qualification. This increment changes only audio-owned paths and continues PR #2. No new third-party code or source reuse; original provenance remains in audio-contract-v1.md.
+
+## Additive v1 contract
+Existing packed control and analysis bits, publish signature, synthesis mapping and UI hooks unchanged. All producers must use publish (one producer; no direct atomic writes), including stationary holds. The visual lane already publishes every loop. The weak diagnostic renews a two-second tone only while its UI ticks. Heartbeat is a 32-bit odd/even sequence (two increments per publication); audio takes one sequentially consistent, bounded read attempt and retains the last accepted coherent control when the writer is interrupted. There is no spin or UI wait. Sequence wrap is supported unless an entire 2^31 publications occurs between observations. Audio-only watchdog expires after 12000 rendered samples (500 ms at 24 kHz) since last accepted fresh snapshot, ramps to exact zero in at most another 1200 samples (50 ms), and latches until audio observes gate release or mute. Subsequent held-gate renewals do not rearm. Expose cumulative exchange.watchdog_trips for diagnostics; do not conflate it with audio_errors or underruns. Normal release and fresh-control DSP unchanged. Future latch modes must renew from a live producer. This is rendered-sample time, not a wall-clock hardware watchdog; if the audio task or DAC itself stalls, the software cannot guarantee physical silence. DMA buffering and DAC behavior may add latency; no physical guarantee.
+
+## Local execution
+g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread -Iinclude tests/audio_test.cpp -o audio_test
+./audio_test
+g++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -pthread -Iinclude tests/audio_test.cpp -o audio_san
+./audio_san
+
+Both PASS. Prior 128000 active samples regression unchanged: 127971 nonzero, FNV sample-word hash 49d6545897c9e1c6. Independent lease/expiry, stationary renewal, latched recovery, arbitrary partition equality, rollover, interrupted writer and 200000 concurrent publications with output bounds/final silence PASS. Host concurrency exercise is not a race-detector proof or embedded timing measurement. Locally tested blobs: audio header 9b17e33ad666d3a152ade642c4e363d3a51cd0ef; tests f7f427386c27168a47c1f28381be6efe38208834. DNS for GitHub blocked in local shell and PlatformIO absent, so target CI required for new candidate. No physical flash, measured hardware latency or audio/display contention qualification. Next: exact head build and visual integration replay, then expanded synthesis modes, patch contract and portable host audition. No automatic merges.
