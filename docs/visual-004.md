@@ -1,0 +1,15 @@
+# CYD-VISUAL-004 — Ink and arithmetic-policy integration
+
+Refs #3/#4. Visual predecessor 0cb088eb9d0825bc4a14418530e90472c1978922, exact audio dependency 48b1e8e675a88754b05a48a16e9db0698671772e. Audio-only hosted run 45748838856 completed successfully (host regression and ESP32 target). The disjoint audio changes are integrated on the visual branch only; no main/audio branch write. Native replay inherits -ffp-contract=off and runs the frozen exact differential comparator. No DSP or shared contract changes.
+
+Ink is a sixth fullscreen effect, accessible via the existing top-left visual selector independently of the four sound patches. Original artistic gesture persistence, not a waveform, measured spectrogram, or formal MHAC protocol. A single 80x60 byte field is updated once at the beginning of an Ink frame and read unchanged by its 30 strips; the UI tick disconnects the stroke on observed gate release/mute or other modes, and gaps >100 ms also disconnect. The line brush uses actual packed peak (12 bits) for strength/radius; no audio-thread dependence. Decay is elapsed-time based, in 25 ms units with fractional carry, maximum 1100 ms gap work; the field reaches zero within approximately 1.075 s without injection. Path samples are frame-rate limited, not a recorder, and color is stylized. Full LCD transfer unchanged. Field 4800 bytes + metadata (4820 bytes on local host); original strip 5120 bytes remains. Target memory and time unmeasured. No dynamic allocation in field.
+
+Local native qualification of exact new field header (302f375402f17d0a24a3091cefa72eb382c8d53e) and standalone test (2e886a931548a3524212747f7b4712888afc2f3d):
+    g++ -std=c++17 -O2 -Wall -Wextra -Werror -ffp-contract=off -Iinclude tests/ink_test.cpp -o ink_test
+    ./ink_test ink.ppm
+    clang++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -ffp-contract=off -Iinclude tests/ink_test.cpp -o ink_san
+    ./ink_san
+
+Both PASS. Same deterministic field hash 95c1e0fe8515c7d3. Bounds, corner-to-corner continuity, release/disconnect, decay, timestamp rollover and time partition checked; 10,000 updates averaged 1.03128 us optimized, 4.86153 us sanitized on local host (field update only, not raster/display/audio). Standalone PPM is actual RGB565-quantized field output with scripted gestures and synthetic peak input, not device capture or real audio analysis. Hosted six-mode replay uses actual audio engine peak and full strip renderer; integrated target and host replay await CI. Local Git DNS and PlatformIO/SDL development package unavailable.
+
+Provenance: rechecked Diviner hardware adapter and MIT notice at 82e06e11e5947e41e888716e7a68e99187410f2e, MHAC README at 495a98ca12bae467a507031f04931aa4254b1866, FM-1-MHAC README at 16c698d9e244559064a9a9a22f834d36912bf498. No upstream code reused for Ink; previous adaptation notices retained. Existing contract unchanged. No physical test or flash authorization. Next: integrated CI, real interactive preview, calibration and gesture controls.

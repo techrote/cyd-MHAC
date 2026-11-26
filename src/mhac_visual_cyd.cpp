@@ -20,7 +20,7 @@ public:
     }
 };
 Display lcd; SPIClass touchBus(VSPI); XPT2046_Touchscreen touch(33);
-Surface ui; Calibration cal; Frame frame; uint16_t pixels[width*strip];
+Surface ui; Calibration cal; Frame frame; InkField ink; uint16_t pixels[width*strip];
 bool ready=false, fault=false; int row=0; unsigned quality=2, fastFrames=0;
 uint32_t lastPoll=0, frameStart=0, frameUs=0, maxStripUs=0, frames=0;
 void publish() { publishControl(mhac::exchange,ui.control()); }
@@ -47,7 +47,12 @@ void mhac_ui_tick() {
     }
     ui.observeWatchdog(mhac::exchange.watchdog_trips.load(std::memory_order_relaxed));
     publish();
-    if(row==0) { frame={ui.control(),ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched()}; frameStart=micros(); maxStripUs=0; }
+    if(!ui.control().gate || ui.mode()!=5) ink.disconnect();
+    if(row==0) {
+        frameStart=micros(); maxStripUs=0;
+        frame={ui.control(),ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched(),&ink};
+        if(frame.mode==5) ink.advance(now,frame.control.x,frame.control.y,frame.control.gate&&!frame.control.mute,frame.analysis&4095u);
+    }
     const uint32_t start=micros();
     renderStrip(frame,row,quality,pixels); lcd.pushImage(0,row,width,strip,pixels);
     maxStripUs=std::max(maxStripUs,uint32_t(micros()-start));

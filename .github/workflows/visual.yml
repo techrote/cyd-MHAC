@@ -4,6 +4,10 @@ on:
     branches: [audio/cyd-audio-001, main]
     paths:
       - 'include/mhac_visual.hpp'
+      - 'include/mhac_ink.hpp'
+      - 'tests/ink_test.cpp'
+      - 'tests/legacy_compare.cpp'
+      - 'platformio.ini'
       - 'src/mhac_visual_cyd.cpp'
       - 'tests/visual_test.cpp'
       - 'tests/visual_002_test.cpp'
@@ -27,14 +31,19 @@ jobs:
         run: |
           mkdir -p receipts
           git rev-parse HEAD > receipts/source-sha.txt
-          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/visual_test.cpp -o /tmp/visual_test
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_test.cpp -o /tmp/visual_test
           /tmp/visual_test receipts | tee receipts/host-replay.txt
           mkdir -p receipts/five-modes
-          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/visual_002_test.cpp -o /tmp/visual_002_test
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_002_test.cpp -o /tmp/visual_002_test
           /tmp/visual_002_test receipts/five-modes | tee receipts/host-visual-002.txt
           mkdir -p receipts/four-pairs
-          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/visual_003_test.cpp -o /tmp/visual_003_test
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_003_test.cpp -o /tmp/visual_003_test
           /tmp/visual_003_test receipts/four-pairs | tee receipts/host-visual-003.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/ink_test.cpp -o /tmp/ink_test
+          /tmp/ink_test receipts/ink-field.ppm | tee receipts/ink-test.txt
+          test "$(git hash-object tests/reference/audio_002.hpp)" = 9b17e33ad666d3a152ade642c4e363d3a51cd0ef
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/legacy_compare.cpp -o /tmp/legacy_compare
+          /tmp/legacy_compare | tee receipts/legacy-compare.txt
       - name: Target compile
         run: |
           python3 -m venv /tmp/pio

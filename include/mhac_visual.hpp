@@ -2,9 +2,10 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
+#include "mhac_ink.hpp"
 namespace mhac::visual {
 constexpr int width=320, height=240, strip=8;
-constexpr unsigned mode_count=5, sound_count=4;
+constexpr unsigned mode_count=6, sound_count=4;
 constexpr unsigned paired_mode[sound_count]={0,1,4,3};
 struct Control { unsigned x=2048,y=2048; bool gate=false,mute=true; unsigned patch=0; };
 struct Calibration {
@@ -53,7 +54,7 @@ public:
     }
 };
 struct Frame {
-    Control control{}; unsigned mode=0; uint32_t analysis=0, tick=0; bool watchdog=false;
+    Control control{}; unsigned mode=0; uint32_t analysis=0, tick=0; bool watchdog=false; const InkField* ink=nullptr;
 };
 inline int tri(int v) noexcept { const unsigned u=unsigned(v)&255u; return int(u<128?u*2:(255-u)*2); }
 inline uint16_t rgb(int r,int g,int b) noexcept {
@@ -83,7 +84,7 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
         const int veil=tri((dx-dy)*3+t+ph);
         v=std::max(0,shell-180)*3;
         r=v*(160+a/3)/255; g=(v+veil/7)*(110+a/2)/255; b=veil/5+v/4;
-    } else { // Loom: warped threads with an interleaved colour structure.
+    } else if(f.mode==4) { // Loom: warped threads with an interleaved colour structure.
         const int u=dx+ (tri(dy*3+t+ph)-128)/3;
         const int w=dy+ (tri(dx*2-t*2)-128)/3;
         const int warp=tri(u*11+ph), weft=tri(w*13-t*2);
@@ -91,6 +92,9 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
         const int thread=over?warp:weft, under=over?weft:warp;
         v=std::max(0,thread-150)*2;
         r=(over?v/5:v)+under/10; g=v*(95+a/2)/255; b=(over?v:v/4)+under/12;
+    } else { // Ink: persistent gesture energy, not an audio waveform.
+        const auto s=f.ink?f.ink->shade(x,y):InkField::Shade{5,12,22};
+        r=s.r;g=s.g;b=s.b;
     }
     const int d2=dx*dx+dy*dy;
     if(d2>=72 && d2<=125) { r=180;g=235;b=225; }
