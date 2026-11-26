@@ -6,6 +6,9 @@ Top-left visual; bottom-left sound; bottom-center-left factory bank (16 sounds; 
 bottom-center-right hold factory audition; bottom-right pitch scale.
 Bottom palette strip (x208–255 of 320): Original / Ember / Verdigris / Silver.
 Tap to cycle; release before playing. Trace retains its feature colours.
+Bottom mapping strip (x256–287 of 320): Direct, Swapped, Fine relative.
+Fine relative starts at last sound coordinates; drag at half sensitivity, lift and re-anchor.
+Mapping changes cancel quotation; the ring shows sound coordinates, not the finger in swapped/relative modes.
 A new touch still interrupts gesture quotation as elsewhere on the surface.
 Last four factory sounds: Stone Bell, Hollow Gong, Copper Rain, Glass Pins.
 Select does not strike; hold audition to sound after explicit unmute.

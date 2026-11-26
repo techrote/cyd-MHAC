@@ -12,6 +12,7 @@ public:
     unsigned mode() const noexcept { return surface_.mode(); }
     Scale scale() const noexcept { return surface_.scale(); }
     Palette palette() const noexcept { return surface_.palette(); }
+    XYMap mapping() const noexcept { return surface_.mapping(); }
     unsigned factoryIndex() const noexcept { return surface_.factoryIndex(); }
     bool factoryAudition() const noexcept { return surface_.factoryAudition(); }
     bool watchdogLatched() const noexcept { return surface_.watchdogLatched(); }
@@ -23,7 +24,7 @@ public:
         expire(now);
         if(down && !down_) {
             const bool wasPlaying=loop_.state()==GestureLoop::State::Playing;
-            if(wasPlaying || soundSelector(x,y) || factoryAction(x,y)!=FactoryAction::None) loop_.stop();
+            if(wasPlaying || xyMapSelector(x,y) || soundSelector(x,y) || factoryAction(x,y)!=FactoryAction::None) loop_.stop();
             if(x>=148 && x<172 && y>=0 && y<24) {
                 consumed_=true;
                 if(!wasPlaying && !surface_.control().mute) loop_.toggle();

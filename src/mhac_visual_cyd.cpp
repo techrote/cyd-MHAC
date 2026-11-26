@@ -103,7 +103,7 @@ void mhac_ui_tick() {
         calFrame=wizard.state(); calIndex=wizard.index(); calReady=wizard.ready();
         mhac::AudioFeatures latest{};
         if(mhac::exchange.features.read(latest)) trace.observe(latest,now);
-        frame={active,ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched(),&ink,ui.scale(),&trace,trace.fresh(now),ui.loopState(),ui.factoryIndex(),ui.factoryAudition(),ui.palette()};
+        frame={active,ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched(),&ink,ui.scale(),&trace,trace.fresh(now),ui.loopState(),ui.factoryIndex(),ui.factoryAudition(),ui.palette(),ui.mapping()};
         if(frame.mode==5) ink.advance(now,frame.control.x,frame.control.y,frame.control.gate&&!frame.control.mute,frame.analysis&4095u);
     }
     const uint32_t start=micros();

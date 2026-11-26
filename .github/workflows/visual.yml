@@ -7,6 +7,8 @@ on:
       - 'tests/calibration_test.cpp'
       - 'include/mhac_visual.hpp'
       - 'include/mhac_palette.hpp'
+      - 'include/mhac_xy_map.hpp'
+      - 'tests/xy_map_test.cpp'
       - 'tests/palette_test.cpp'
       - 'include/mhac_visual_patch.hpp'
       - 'tests/chime_ui_test.cpp'
@@ -59,6 +61,8 @@ jobs:
           git rev-parse HEAD > receipts/source-sha.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/palette_test.cpp -o /tmp/palette_test
           /tmp/palette_test | tee receipts/palette-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/xy_map_test.cpp -o /tmp/xy_map_test
+          /tmp/xy_map_test | tee receipts/xy-map-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/calibration_test.cpp -o /tmp/calibration_test
           /tmp/calibration_test | tee receipts/calibration-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/chime_ui_test.cpp -o /tmp/chime_ui_test

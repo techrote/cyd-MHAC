@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include "mhac_calibration.hpp"
 #include "mhac_palette.hpp"
+#include "mhac_xy_map.hpp"
 #include "mhac_ink.hpp"
 #include "mhac_scale.hpp"
 #include "mhac_trace.hpp"
@@ -17,12 +18,14 @@ class Surface {
     uint32_t last_=0, trips_=0; bool watchdog_=false;
     Scale scale_=Scale::Free; unsigned raw_x_=2048;
     Palette palette_=Palette::Original;
+    XYMap mapping_=XYMap::Direct; XYMapper mapper_;
     FactorySelection factory_; bool audition_=false;
 public:
     Control control() const noexcept { return c_; }
     unsigned mode() const noexcept { return mode_; }
     Scale scale() const noexcept { return scale_; }
     Palette palette() const noexcept { return palette_; }
+    XYMap mapping() const noexcept { return mapping_; }
     unsigned factoryIndex() const noexcept { return factory_.index(); }
     bool factoryAudition() const noexcept { return audition_ && c_.gate; }
     bool watchdogLatched() const noexcept { return watchdog_; }
@@ -42,6 +45,9 @@ public:
         if(fresh && y<24 && (x<24 || x>=width-24)) {
             if(x<24) mode_=(mode_+1)%mode_count; else { c_.mute=!c_.mute; if(!c_.mute) watchdog_=false; }
             c_.gate=false; blocked_=true; return;
+        }
+        if(fresh && xyMapSelector(x,y)) {
+            mapping_=nextXYMap(mapping_); c_.gate=false; blocked_=true; return;
         }
         if(fresh && paletteSelector(x,y)) {
             palette_=nextPalette(palette_); c_.gate=false; blocked_=true; return;
@@ -68,8 +74,11 @@ public:
         if(audition_) {
             c_.gate=!c_.mute; return;
         }
+        const auto point=touchPoint(x,y);
+        if(fresh) mapper_.begin(point,{raw_x_,c_.y});
+        const auto target=mapper_.target(mapping_,point);
         if(count_<2) ++count_;
-        const unsigned tx=unsigned(x)*4095/(width-1), ty=unsigned(height-1-y)*4095/(height-1);
+        const unsigned tx=target.x, ty=target.y;
         if(count_==1) { raw_x_=tx; c_.y=ty; }
         else { raw_x_=(raw_x_+tx*3+2)/4; c_.y=(c_.y+ty*3+2)/4; }
         c_.x=mapPitch(raw_x_,scale_);
@@ -80,6 +89,7 @@ struct Frame {
     Control control{}; unsigned mode=0; uint32_t analysis=0, tick=0; bool watchdog=false; const InkField* ink=nullptr; Scale scale=Scale::Free; const Trace* trace=nullptr; bool trace_fresh=false; GestureLoop::State loop_state=GestureLoop::State::Idle;
     unsigned factory_index=factory_count; bool factory_audition=false;
     Palette palette=Palette::Original;
+    XYMap mapping=XYMap::Direct;
 };
 inline int tri(int v) noexcept { const unsigned u=unsigned(v)&255u; return int(u<128?u*2:(255-u)*2); }
 inline uint16_t rgb(int r,int g,int b) noexcept {
@@ -172,6 +182,11 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
         if(y<232 && index!=f.palette) return rgb(38,48,58);
         if(y>=232 && index!=f.palette) return rgb(12,20,28);
         const auto c=paletteSwatch(index); return rgb(c.r,c.g,c.b);
+    }
+    // Three aligned mapping bars: Direct, Swapped, Fine relative.
+    if(x>=260 && x<284 && y>=224 && y<236) {
+        const unsigned i=unsigned(x-260)/8;
+        return i==unsigned(f.mapping)?rgb(180,162,240):rgb(65,80,94);
     }
     return rgb(r,g,b);
 }

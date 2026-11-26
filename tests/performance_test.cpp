@@ -54,8 +54,50 @@ static void factoryIntegration() {
     }
     std::puts("factory integration PASS: 16 exact auditions, loop cancellation, stale/watchdog mute and 768 indicator checks");
 }
+static void mappingIntegration() {
+    PerformanceSurface ui; uint32_t t=0;
+    auto touch=[&](bool down,int x,int y){ui.sample(down,x,y,t+=8);};
+    auto tap=[&](int x,int y){touch(true,x,y);touch(false,0,0);};
+    assert(ui.mapping()==XYMap::Direct);
+    tap(310,10);
+    touch(true,120,80); touch(true,120,80);
+    const auto pt=touchPoint(120,80);
+    assert(ui.control().gate && ui.control().x==pt.x && ui.control().y==pt.y);
+    touch(false,0,0);
+    tap(160,10); assert(ui.loopState()==GestureLoop::State::Armed);
+    const auto before=ui.control();
+    touch(true,270,230); touch(true,100,100);
+    assert(ui.mapping()==XYMap::Swapped && ui.loopState()==GestureLoop::State::Idle);
+    assert(!ui.control().gate && !ui.control().mute && ui.control().x==before.x && ui.control().y==before.y);
+    touch(false,0,0);
+    touch(true,120,80); touch(true,120,80);
+    assert(ui.control().gate && ui.control().x==pt.y && ui.control().y==pt.x);
+    touch(false,0,0);
+    tap(270,230); assert(ui.mapping()==XYMap::Fine);
+    const auto anchored=ui.control();
+    touch(true,50,150); touch(true,50,150);
+    assert(ui.control().gate && ui.control().x==anchored.x && ui.control().y==anchored.y);
+    touch(true,250,60);
+    assert(ui.control().x>anchored.x && ui.control().y>anchored.y);
+    touch(false,0,0);
+    const auto lifted=ui.control();
+    touch(true,90,90); touch(true,90,90);
+    assert(ui.control().gate && ui.control().x==lifted.x && ui.control().y==lifted.y);
+    ui.expire(t+101);
+    assert(ui.control().mute && !ui.control().gate);
+    t+=102; touch(false,0,0); tap(270,230); assert(ui.mapping()==XYMap::Direct && ui.control().mute);
+    Frame f{}; std::array<uint16_t,width*strip> pixels{};
+    for(unsigned i=0;i<xy_map_count;++i) for(unsigned q:{1u,2u,4u}) {
+        f.mapping=static_cast<XYMap>(i);
+        renderStrip(f,224,q,pixels.data());
+        for(unsigned k=0;k<xy_map_count;++k)
+            assert(pixels[260+8*k]==(i==k?rgb(180,162,240):rgb(65,80,94)));
+    }
+    std::puts("mapping integration PASS: silent selection, swapped XY, fine re-anchor, stale mute, 27 indicator checks");
+}
 int main(){
     factoryIntegration();
+    mappingIntegration();
     PerformanceSurface ui; mhac::Exchange io; mhac::Engine synth;
     std::array<int16_t,mhac::block> pcm{};
     ui.sample(true,160,10,0); ui.sample(false,0,0,8); assert(ui.loopState()==GestureLoop::State::Idle);
