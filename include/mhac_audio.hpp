@@ -134,8 +134,9 @@ public:
                 wet=a*(1.f-mix)+delayed*mix;
             } else { echo_pos_=0; echo_valid_=0; }
             float modal=0.f;
-            if(weights_[modal_patch_index]) {
-                modal=modal_.sample(step,morph_,active && patch==modal_patch_index,sine);
+            if(weights_[modal_patch_index] && env_>0.f) {
+                const bool inhibit=(c&(1u<<25)) || (requested && !active) || patch!=modal_patch_index;
+                modal=modal_.sample(step,morph_,active && patch==modal_patch_index,sine,inhibit);
                 modal_used_=true;
             } else if(modal_used_) { modal_.reset(); modal_used_=false; }
             float sound=original;

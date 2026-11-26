@@ -22,7 +22,47 @@ static std::vector<int16_t> render(unsigned x,unsigned y,bool split,bool retrigg
 static uint64_t energy(const std::vector<int16_t>& v,unsigned a,unsigned b) {
     uint64_t sum=0; for(unsigned i=a;i<b;++i) sum+=int64_t(v[i])*v[i]; return sum;
 }
+// Direct voice tests isolate the modal bank from the existing global gate envelope.
+static void overlap_test() {
+    auto sine=[](uint32_t p) { return std::sin(float(p>>16)*6.28318530718f/65536.f); };
+    constexpr uint32_t lo=19685267u, hi=78405362u;
+    ModalChime both, tail, fresh;
+    for(unsigned i=0;i<128;++i) {
+        assert(both.sample(lo,.2f,true,sine)==tail.sample(lo,.2f,true,sine));
+    }
+    for(unsigned i=0;i<32;++i) {
+        assert(both.sample(lo,.2f,false,sine)==tail.sample(lo,.2f,false,sine));
+    }
+    double tail_energy=0, new_energy=0;
+    for(unsigned i=0;i<1024;++i) {
+        float a=both.sample(hi,.8f,true,sine);
+        // Released voice ignores incoming pitch/brightness.
+        float b=tail.sample(0,.99f,false,sine);
+        float c=fresh.sample(hi,.8f,true,sine);
+        assert(std::fabs(a-b-c)<2e-7f);
+        assert(std::fabs(a)<=1.f);
+        tail_energy+=b*b; new_energy+=c*c;
+    }
+    assert(tail_energy>1. && new_energy>1.);
+    // Constant phase probe isolates amplitude continuity from oscillator motion.
+    auto unity=[](uint32_t) { return 1.f; };
+    ModalChime steal; float last=0.f;
+    for(unsigned i=0;i<12000;++i) {
+        bool gate=i%129u!=128u;
+        float v=steal.sample(hi,.4f,gate,unity);
+        assert(v>=0.f && v<=1.f);
+        assert(std::fabs(v-last)<=.061f); last=v;
+    }
+    // Inhibit while input stays held, then verify silence and fresh rearm.
+    for(unsigned i=0;i<1024;++i) last=steal.sample(hi,.4f,true,unity,true);
+    assert(last==0.f);
+    ModalChime clean;
+    for(unsigned i=0;i<256;++i)
+        assert(steal.sample(lo,.2f,true,sine)==clean.sample(lo,.2f,true,sine));
+    std::printf("PASS two-voice pitch lock/additivity (1024 samples), 12000 stealing continuity samples, inhibit/rearm; tail energy %.3f new %.3f\n",tail_energy,new_energy);
+}
 int main(int argc,char** argv) {
+    overlap_test();
     unsigned count=0;
     for(unsigned x:{0u,2048u,4095u}) for(unsigned y:{0u,2048u,4095u}) {
         auto v=render(x,y,false,false); assert(v==render(x,y,true,false));
