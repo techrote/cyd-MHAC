@@ -101,6 +101,7 @@ void __attribute__((weak)) mhac_ui_tick() {
     auto send=[&](unsigned x,unsigned y,bool gate,bool mute) {
         if(preset.patch==mhac::modal_patch_index) mhac::exchange.publish_modal(x,y,gate,mute);
         else if(preset.patch==mhac::quotation_patch_index) mhac::exchange.publish_quotation(x,y,gate,mute);
+        else if(preset.patch==mhac::counterquotation_session_index) mhac::exchange.publish_counterquotation(x,y,gate,mute);
         else mhac::exchange.publish_patch(x,y,gate,mute,selected());
     };
     auto play=[&] { muted=false; send(preset.x,preset.y,true,false); };
@@ -124,6 +125,9 @@ void __attribute__((weak)) mhac_ui_tick() {
             play(); sounding=true; last=millis();
         } else if(c=='Q') {
             preset=mhac::SoundPreset{uint8_t(mhac::quotation_patch_index),1365,3400};
+            play(); sounding=true; last=millis();
+        } else if(c=='T') {
+            preset=mhac::SoundPreset{uint8_t(mhac::counterquotation_session_index),1365,3400};
             play(); sounding=true; last=millis();
         } else if(c=='p') {
             play(); sounding=true; last=millis();
@@ -162,7 +166,7 @@ void __attribute__((weak)) mhac_ui_tick() {
 void setup() {
     Serial.begin(115200);
     const bool ready=audio_begin();
-    Serial.println(ready?"MHAC audio initialized; serial 1-9, A-P, Q quotation, p, 0, m, d, s/r legacy, S/R extended":"MHAC audio initialization FAILED");
+    Serial.println(ready?"MHAC audio initialized; serial 1-9, A-P, Q quotation, T counterquotation, p, 0, m, d, s/r legacy, S/R extended":"MHAC audio initialization FAILED");
     mhac_ui_begin();
 }
 void loop() { mhac_ui_tick(); delay(1); }

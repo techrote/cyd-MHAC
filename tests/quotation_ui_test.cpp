@@ -10,7 +10,7 @@ int main(int argc,char** argv) {
     uint32_t t=0;
     auto touch=[&](bool d,int x,int y){ui.sample(d,x,y,t+=8);};
     auto tap=[&](int x,int y){touch(true,x,y);touch(false,0,0);};
-    for(unsigned p=1;p<sound_count;++p) {
+    for(unsigned p=1;p<mhac::quotation_patch_index+1;++p) {
         touch(true,10,230); touch(true,180,110);
         assert(ui.control().patch==p && !ui.control().gate);
         touch(false,0,0);
@@ -47,8 +47,23 @@ int main(int argc,char** argv) {
         std::printf("frame %u hash %016llx\n",n,static_cast<unsigned long long>(h));
     }
     touch(false,0,0); tap(310,10);for(unsigned k=0;k<128;++k)block();for(auto v:pcm)assert(v==0);
+    tap(10,230);assert(ui.control().patch==mhac::counterquotation_session_index && ui.mode()==quotation_mode && ui.control().mute);block();
+    assert((io.control.load()&(mhac::quotation_opt_in|mhac::counterquotation_opt_in))==(mhac::quotation_opt_in|mhac::counterquotation_opt_in));
+    tap(310,10); unsigned counterActive=0;
+    for(unsigned k=0;k<192;++k) {touch(true,60+int(k%120),50);block();for(auto v:pcm){assert(v>=-8191&&v<=8191);counterActive+=v!=0;}}
+    assert(counterActive>0 && !io.watchdog_trips.load());
+    Frame counter{};counter.control=ui.control();counter.mode=ui.mode();counter.analysis=io.snapshot();counter.tick=t/25;
+    Frame original=counter; original.control.patch=mhac::quotation_patch_index;
+    unsigned differences=0;
+    for(unsigned q:{1u,2u,4u}) for(int y=0;y<height;y+=strip){
+        renderStrip(counter,y,q,buf.data()+1);assert(buf.front()==0x1234&&buf.back()==0x5678);
+        for(int j=0;j<strip;++j)for(int x=0;x<width;++x){const int sx=x/int(q)*int(q),sy=y+j/int(q)*int(q);
+            assert(buf[1+j*width+x]==pixel(counter,sx,sy));if(q==1&&y+j<216)differences+=pixel(counter,x,y+j)!=pixel(original,x,y+j);}
+    }
+    assert(differences>1000);std::printf("counterquotation PCM=%u changed visual pixels=%u\n",counterActive,differences);
+    touch(false,0,0);tap(310,10);for(unsigned k=0;k<128;++k)block();for(auto v:pcm)assert(v==0);
     tap(10,230);assert(ui.control().patch==0&&ui.mode()==0&&ui.control().mute);block();
-    assert(!(io.control.load()&(mhac::quotation_opt_in|mhac::modal_opt_in)));
+    assert(!(io.control.load()&(mhac::quotation_opt_in|mhac::modal_opt_in|mhac::counterquotation_opt_in)));
     tap(100,230);assert(ui.factoryIndex()==0 && ui.control().patch==factoryEntry(0).sound.patch);
     assert(factory_count==16&&active>0);
     std::printf("quotation UI PASS: 3 frames, 691200 pixel equivalences, %u active PCM samples, mute, selection and legacy factory\n",active);

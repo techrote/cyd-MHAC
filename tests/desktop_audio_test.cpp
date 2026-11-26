@@ -37,5 +37,5 @@ int main() {
     assert(stalled.last_peak.load()>0);
     for(unsigned n=0;n<200;++n) stalled.render(pcm.data(),sizeof pcm);
     assert(stalled.exchange.watchdog_trips.load()==1 && stalled.last_peak.load()==0);
-    std::puts("desktop audio PASS: eight patches, 1600 variable/unaligned callbacks, exact reference PCM, independent watchdog silence");
+    std::puts("desktop audio PASS: nine session sounds, 1800 variable/unaligned callbacks, exact reference PCM, independent watchdog silence");
 }

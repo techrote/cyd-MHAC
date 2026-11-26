@@ -57,3 +57,10 @@ Eleventh visual engine: Cellular. From Resonance, tap top-left ten times.
  excitation threshold. The visual clock is independent of the audio clock.
  Leaving and re-entering resets the field on the next observed frame.
  Decorative generative art, not a simulation of sound propagation.
+
+Ninth session sound: Counterquotation. From Phase Morph tap the bottom-left
+ selector eight times. Palimpsest adds crossing green contours to distinguish
+ this variant; the contours are artistic, not a readout of stored notes.
+ X remains pitch and Y historical blend. The recalled gesture alternates
+ octave below and fifth above; wait at least 500 ms of active synthesis.
+ The factory bank remains 16 entries; this variant is session-only.

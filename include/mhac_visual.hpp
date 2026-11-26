@@ -184,6 +184,11 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
         const int grain=tri(dy*7+t)/24;
         r=5+ghost+ink/5; g=9+ink*(96+a/2)/255+ghost/3;
         b=18+ink+ghost*3/4+grain;
+        if(f.control.patch==mhac::counterquotation_session_index) {
+            // Complementary crossing contours: artistic counterpoint, not recalled pitch telemetry.
+            const int counter=std::max(0,tri(dx*4+dy*3+bend-t*3)-208)*depth/64;
+            r+=counter/3; g+=counter; b+=counter/4;
+        }
     } else if(f.mode==cellular_mode) { // Excitable cellular field.
         const auto s=f.cellular?f.cellular->shade(x,y):CellularField::Shade{5,9,16};
         r=s.r;g=s.g;b=s.b;

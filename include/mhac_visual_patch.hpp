@@ -3,20 +3,22 @@
 #include <cstdlib>
 #include "mhac_audio.hpp"
 namespace mhac::visual {
-constexpr unsigned mode_count=11, sound_count=8, chime_mode=7, caustic_mode=8, quotation_mode=9, cellular_mode=10;
-constexpr unsigned paired_mode[sound_count]={0,1,4,3,2,5,chime_mode,quotation_mode};
+constexpr unsigned mode_count=11, sound_count=9, chime_mode=7, caustic_mode=8, quotation_mode=9, cellular_mode=10;
+constexpr unsigned paired_mode[sound_count]={0,1,4,3,2,5,chime_mode,quotation_mode,quotation_mode};
 struct Control { unsigned x=2048,y=2048; bool gate=false,mute=true; unsigned patch=0; };
 static_assert(mhac::contract_version==1 && mhac::patch_version==1 &&
     mhac::patch_extension_version==2 && mhac::extended_patch_count==6 &&
     mhac::modal_extension_version==3 && mhac::modal_patch_index==6 &&
     mhac::performance_patch_count==7 && mhac::quotation_extension_version==4 &&
-    mhac::quotation_patch_index==7 && mhac::mix_patch_count==sound_count,"patch contract pin required");
+    mhac::quotation_patch_index==7 && mhac::mix_patch_count==8 && mhac::counterquotation_extension_version==5 &&
+    mhac::counterquotation_session_index==8 && sound_count==9,"patch contract pin required");
 constexpr bool soundSelector(int x,int y) noexcept {
     return x>=0 && x<int(sound_count*4) && y>=216 && y<240;
 }
 inline void publishControl(mhac::Exchange& io,const Control& c) noexcept {
     if(c.patch==mhac::modal_patch_index) io.publish_modal(c.x,c.y,c.gate,c.mute);
     else if(c.patch==mhac::quotation_patch_index) io.publish_quotation(c.x,c.y,c.gate,c.mute);
+    else if(c.patch==mhac::counterquotation_session_index) io.publish_counterquotation(c.x,c.y,c.gate,c.mute);
     else io.publish_patch(c.x,c.y,c.gate,c.mute,static_cast<mhac::Patch>(c.patch));
 }
 struct ChimeShade { int r,g,b; };

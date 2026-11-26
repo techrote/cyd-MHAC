@@ -9,7 +9,7 @@ int main(int argc,char** argv) {
     Surface ui; mhac::Exchange io; mhac::Engine synth;
     std::array<int16_t,mhac::block> pcm{};
     uint32_t now=0;
-    auto publish=[&]{publishControl(io,ui.control()); assert(((io.control.load()>>26)&7u)==ui.control().patch);};
+    auto publish=[&]{publishControl(io,ui.control()); assert(((io.control.load()>>26)&7u)==(ui.control().patch==8?7:ui.control().patch));};
     auto touch=[&](bool d,int x,int y){now+=8;ui.sample(d,x,y,now);publish();};
     auto tap=[&](int x,int y){touch(true,x,y);touch(false,x,y);};
     auto render=[&]{publish();synth.render(io,pcm.data(),pcm.size());};
@@ -67,5 +67,5 @@ int main(int argc,char** argv) {
         renderStrip(f,232,q,pixels.data());
         for(unsigned k=0;k<scale_count;++k) assert(pixels[296+8*k]==(k==s?rgb(116,210,240):rgb(65,80,94)));
     }
-    std::cout<<"PASS eight paired modes, independent visual selection, gesture ownership, pitch maps, heartbeat, watchdog and mute\n";
+    std::cout<<"PASS nine paired sounds, independent visual selection, gesture ownership, pitch maps, heartbeat, watchdog and mute\n";
 }
