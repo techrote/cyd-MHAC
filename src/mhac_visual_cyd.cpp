@@ -23,9 +23,30 @@ public:
 };
 Display lcd; SPIClass touchBus(VSPI); XPT2046_Touchscreen touch(33);
 PerformanceSurface ui; Calibration cal; Frame frame; InkField ink; Trace trace; uint16_t pixels[width*strip];
+CalibrationWizard wizard;
+using CalState=CalibrationWizard::State;
+CalState calFrame=CalState::Idle;
+unsigned calIndex=0; bool calReady=false, bootHeld=false, bootHandled=false, suppressTouch=false;
+uint32_t bootStart=0, calStatusStart=0;
 bool ready=false, fault=false; int row=0; unsigned quality=2, fastFrames=0;
 uint32_t lastPoll=0, frameStart=0, frameUs=0, maxStripUs=0, frames=0;
 void publish() { publishControl(mhac::exchange,ui.control()); }
+void renderCalibrationStrip(int top) {
+    const auto p=CalibrationWizard::targets[std::min(calIndex,2u)];
+    for(int j=0;j<strip;++j) for(int x=0;x<width;++x) {
+        const int y=top+j, dx=std::abs(x-p.x),dy=std::abs(y-p.y);
+        uint16_t c=rgb(6,14,23);
+        if(calFrame==CalState::Collecting && ((dx<=1 && dy<=14)||(dy<=1 && dx<=14)))
+            c=calReady?rgb(64,220,150):rgb(240,220,130);
+        if(y>=112 && y<128 && calFrame!=CalState::Collecting && x>=112 && x<208)
+            c=calFrame==CalState::Accepted?rgb(64,220,150):rgb(255,72,48);
+        if(y>=4 && y<12 && x>=140 && x<176) {
+            const unsigned i=unsigned(x-140)/12;
+            if(x%12<8) c=i<calIndex?rgb(64,220,150):rgb(65,80,94);
+        }
+        pixels[j*width+x]=c;
+    }
+}
 }
 void mhac_ui_begin() {
     pinMode(0,INPUT_PULLUP); pinMode(21,OUTPUT); digitalWrite(21,LOW);
@@ -41,11 +62,37 @@ void mhac_ui_tick() {
     const uint32_t now=millis(); ui.expire(now);
     ui.observeWatchdog(mhac::exchange.watchdog_trips.load(std::memory_order_relaxed));
     if(mhac::audio_errors.load(std::memory_order_relaxed)!=0) fault=true;
-    if(fault || digitalRead(0)==LOW) ui.forceMute();
+    const bool boot=digitalRead(0)==LOW;
+    if(boot && !bootHeld) {
+        bootStart=now; bootHandled=wizard.state()!=CalState::Idle;
+        if(bootHandled) wizard.cancel();
+        suppressTouch=true;
+    }
+    bootHeld=boot;
+    if(boot && !bootHandled && !fault && uint32_t(now-bootStart)>=1200) {
+        wizard.begin(now); bootHandled=true;
+    }
+    if(fault) wizard.cancel();
+    if(fault || boot || wizard.state()!=CalState::Idle || suppressTouch) ui.forceMute();
+    if((wizard.state()==CalState::Accepted || wizard.state()==CalState::Rejected)
+            && uint32_t(now-calStatusStart)>=900) wizard.cancel();
     if(uint32_t(now-lastPoll)>=8) {
-        lastPoll=now; const auto p=touch.getPoint(); int x=0,y=0;
-        cal.landscape(p.x,p.y,x,y); ui.sample(p.z>=400,x,y,now);
-        if(fault || digitalRead(0)==LOW) ui.forceMute();
+        lastPoll=now; const auto p=touch.getPoint(); const bool down=p.z>=400;
+        if(wizard.active() && !boot && !fault) {
+            wizard.sample(down,p.x,p.y,now);
+            if(!wizard.active()) {
+                calStatusStart=now;
+                if(wizard.state()==CalState::Accepted) cal=wizard.result();
+            }
+        }
+        if(fault || boot || wizard.state()!=CalState::Idle || suppressTouch) {
+            ui.forceMute();
+            if(!down && !boot && wizard.state()==CalState::Idle && !fault) {
+                ui.sample(false,0,0,now); suppressTouch=false;
+            }
+        } else {
+            int x=0,y=0; cal.landscape(p.x,p.y,x,y); ui.sample(down,x,y,now);
+        }
     }
     ui.observeWatchdog(mhac::exchange.watchdog_trips.load(std::memory_order_relaxed));
     const auto active=ui.effective(now);
@@ -53,13 +100,16 @@ void mhac_ui_tick() {
     if(!active.gate || ui.mode()!=5) ink.disconnect();
     if(row==0) {
         frameStart=micros(); maxStripUs=0;
+        calFrame=wizard.state(); calIndex=wizard.index(); calReady=wizard.ready();
         mhac::AudioFeatures latest{};
         if(mhac::exchange.features.read(latest)) trace.observe(latest,now);
         frame={active,ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched(),&ink,ui.scale(),&trace,trace.fresh(now),ui.loopState(),ui.factoryIndex(),ui.factoryAudition()};
         if(frame.mode==5) ink.advance(now,frame.control.x,frame.control.y,frame.control.gate&&!frame.control.mute,frame.analysis&4095u);
     }
     const uint32_t start=micros();
-    renderStrip(frame,row,quality,pixels); lcd.pushImage(0,row,width,strip,pixels);
+    if(calFrame==CalState::Idle) renderStrip(frame,row,quality,pixels);
+    else renderCalibrationStrip(row);
+    lcd.pushImage(0,row,width,strip,pixels);
     maxStripUs=std::max(maxStripUs,uint32_t(micros()-start));
     row+=strip;
     if(row==height) {

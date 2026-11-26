@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
+#include "mhac_calibration.hpp"
 #include "mhac_ink.hpp"
 #include "mhac_scale.hpp"
 #include "mhac_trace.hpp"
@@ -10,16 +11,6 @@
 #include "mhac_visual_patch.hpp"
 namespace mhac::visual {
 constexpr int width=320, height=240, strip=8;
-struct Calibration {
-    int left=200,right=3900,top=3900,bottom=200;
-    static int map(int v,int a,int b,int n) noexcept {
-        if(a==b) return 0;
-        return std::clamp((std::clamp(v,0,4095)-a)*(n-1)/(b-a),0,n-1);
-    }
-    void landscape(int rawX,int rawY,int& x,int& y) const noexcept {
-        x=map(rawY,left,right,width); y=map(rawX,top,bottom,height);
-    }
-};
 class Surface {
     Control c_{}; unsigned mode_=0, count_=0; bool held_=false, blocked_=false;
     uint32_t last_=0, trips_=0; bool watchdog_=false;

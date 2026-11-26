@@ -3,6 +3,8 @@ on:
   pull_request:
     branches: [audio/cyd-audio-001, main]
     paths:
+      - 'include/mhac_calibration.hpp'
+      - 'tests/calibration_test.cpp'
       - 'include/mhac_visual.hpp'
       - 'include/mhac_visual_patch.hpp'
       - 'tests/chime_ui_test.cpp'
@@ -53,6 +55,8 @@ jobs:
           set -euo pipefail
           mkdir -p receipts
           git rev-parse HEAD > receipts/source-sha.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/calibration_test.cpp -o /tmp/calibration_test
+          /tmp/calibration_test | tee receipts/calibration-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/chime_ui_test.cpp -o /tmp/chime_ui_test
           /tmp/chime_ui_test | tee receipts/chime-ui-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_test.cpp -o /tmp/visual_test
@@ -104,8 +108,10 @@ jobs:
           python3 -m venv /tmp/pio
           /tmp/pio/bin/pip install platformio==6.1.18
           /tmp/pio/bin/pio run -c platformio.visual.ini -e cyd-visual | tee receipts/target-build.txt
-          cp .pio/build/cyd-visual/firmware.bin receipts/firmware.bin
-          (cd receipts && sha256sum firmware.bin > SHA256SUMS)
+          /tmp/pio/bin/pio run -c platformio.visual.ini -e cyd-visual -t mhac_layout | tee receipts/layout-build.txt
+          cp .pio/build/cyd-visual/layout-evidence/* receipts/
+          python3 tools/audio/verify_candidate.py receipts/firmware.bin --partitions receipts/partitions.bin --negative-tests | tee receipts/image-integrity.json
+          (cd receipts && sha256sum firmware.bin bootloader.bin partitions.bin boot_app0.bin > SHA256SUMS && cat SHA256SUMS)
           echo "Compile candidate only; no flash approval or physical validation." > receipts/STATUS.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
