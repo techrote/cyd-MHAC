@@ -5,6 +5,7 @@
 #include <LovyanGFX.hpp>
 #include "mhac_platform.hpp"
 #include "mhac_visual_audio.hpp"
+#include "mhac_performance.hpp"
 namespace {
 using namespace mhac::visual;
 static_assert(mhac::feature_version==1 && mhac::rate==24000 && mhac::feature_window==128,"feature contract pin required");
@@ -21,7 +22,7 @@ public:
     }
 };
 Display lcd; SPIClass touchBus(VSPI); XPT2046_Touchscreen touch(33);
-Surface ui; Calibration cal; Frame frame; InkField ink; Trace trace; uint16_t pixels[width*strip];
+PerformanceSurface ui; Calibration cal; Frame frame; InkField ink; Trace trace; uint16_t pixels[width*strip];
 bool ready=false, fault=false; int row=0; unsigned quality=2, fastFrames=0;
 uint32_t lastPoll=0, frameStart=0, frameUs=0, maxStripUs=0, frames=0;
 void publish() { publishControl(mhac::exchange,ui.control()); }
@@ -47,13 +48,14 @@ void mhac_ui_tick() {
         if(fault || digitalRead(0)==LOW) ui.forceMute();
     }
     ui.observeWatchdog(mhac::exchange.watchdog_trips.load(std::memory_order_relaxed));
-    publish();
-    if(!ui.control().gate || ui.mode()!=5) ink.disconnect();
+    const auto active=ui.effective(now);
+    publishControl(mhac::exchange,active);
+    if(!active.gate || ui.mode()!=5) ink.disconnect();
     if(row==0) {
         frameStart=micros(); maxStripUs=0;
         mhac::AudioFeatures latest{};
         if(mhac::exchange.features.read(latest)) trace.observe(latest,now);
-        frame={ui.control(),ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched(),&ink,ui.scale(),&trace,trace.fresh(now)};
+        frame={active,ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched(),&ink,ui.scale(),&trace,trace.fresh(now),ui.loopState()};
         if(frame.mode==5) ink.advance(now,frame.control.x,frame.control.y,frame.control.gate&&!frame.control.mute,frame.analysis&4095u);
     }
     const uint32_t start=micros();
@@ -66,8 +68,12 @@ void mhac_ui_tick() {
         else if(quality==4 && frameUs<55000 && maxStripUs<3000) { if(++fastFrames>=60) { quality=2;fastFrames=0; } }
         else fastFrames=0;
         // Low-rate telemetry only while silent and when the UART has space.
-        if(frames%120==0 && !ui.control().gate && Serial.availableForWrite()>=120)
+        if(frames%120==0 && !active.gate && Serial.availableForWrite()>=120)
             Serial.printf("visual frame_us=%lu strip_us=%lu step=%u blocks=%lu errors=%lu watchdog=%lu\n",(unsigned long)frameUs,(unsigned long)maxStripUs,quality,(unsigned long)mhac::audio_blocks.load(),(unsigned long)mhac::audio_errors.load(),(unsigned long)mhac::exchange.watchdog_trips.load());
+        if(frames%120==60 && !active.gate && Serial.availableForWrite()>=120) {
+            mhac::AudioTiming t{};
+            if(mhac::audio_timing.read(t)) Serial.printf("audio prep_us=%lu render_us=%lu over=%lu failed=%lu\n",(unsigned long)t.max_prepare_us,(unsigned long)t.max_render_us,(unsigned long)t.prepare_over_budget,(unsigned long)t.failed_writes);
+        }
     }
 }
 #endif

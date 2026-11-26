@@ -4,6 +4,11 @@ on:
     branches: [audio/cyd-audio-001, main]
     paths:
       - 'include/mhac_visual.hpp'
+      - 'include/mhac_gesture.hpp'
+      - 'include/mhac_performance.hpp'
+      - 'include/mhac_timing.hpp'
+      - 'tests/gesture_test.cpp'
+      - 'tests/performance_test.cpp'
       - 'include/mhac_trace.hpp'
       - 'include/mhac_features.hpp'
       - 'tests/trace_test.cpp'
@@ -41,6 +46,10 @@ jobs:
           git rev-parse HEAD > receipts/source-sha.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_test.cpp -o /tmp/visual_test
           /tmp/visual_test receipts | tee receipts/host-replay.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/gesture_test.cpp -o /tmp/gesture_test
+          /tmp/gesture_test | tee receipts/gesture-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/performance_test.cpp -o /tmp/performance_test
+          /tmp/performance_test | tee receipts/performance-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/trace_test.cpp -o /tmp/trace_test
           /tmp/trace_test | tee receipts/trace-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/trace_integration.cpp -o /tmp/trace_integration

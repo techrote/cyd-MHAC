@@ -10,6 +10,7 @@ on:
       - 'tests/extended_test.cpp'
       - 'tests/features_test.cpp'
       - 'tests/features_integration.cpp'
+      - 'tests/timing_test.cpp'
       - 'tests/legacy_compare.cpp'
       - 'tests/reference/**'
       - 'platformio.ini'
@@ -46,6 +47,8 @@ jobs:
           /tmp/features_test | tee receipts/features-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/features_integration.cpp -o /tmp/features_integration
           /tmp/features_integration | tee receipts/features-integration.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread -Iinclude tests/timing_test.cpp -o /tmp/timing_test
+          /tmp/timing_test | tee receipts/timing-test.txt
       - name: Target compile
         shell: bash
         run: |
