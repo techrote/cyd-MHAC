@@ -29,11 +29,11 @@ jobs:
           g++ --version | tee receipts/compiler.txt
           echo "Compile candidate only; no flash approval or physical validation." > receipts/STATUS.txt
           test "$(git hash-object tests/reference/audio_002.hpp)" = 9b17e33ad666d3a152ade642c4e363d3a51cd0ef
-          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread -Iinclude tests/audio_test.cpp -o /tmp/audio_test
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -pthread -Iinclude tests/audio_test.cpp -o /tmp/audio_test
           /tmp/audio_test | tee receipts/audio-test.txt
-          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/patch_test.cpp -o /tmp/patch_test
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/patch_test.cpp -o /tmp/patch_test
           /tmp/patch_test | tee receipts/patch-test.txt
-          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/legacy_compare.cpp -o /tmp/legacy_compare
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/legacy_compare.cpp -o /tmp/legacy_compare
           /tmp/legacy_compare | tee receipts/legacy-compare.txt
       - name: Target compile
         shell: bash
