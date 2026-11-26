@@ -4,8 +4,9 @@
 #include <cstdlib>
 namespace mhac::visual {
 constexpr int width=320, height=240, strip=8;
-constexpr unsigned mode_count=5;
-struct Control { unsigned x=2048,y=2048; bool gate=false,mute=true; };
+constexpr unsigned mode_count=5, sound_count=4;
+constexpr unsigned paired_mode[sound_count]={0,1,4,3};
+struct Control { unsigned x=2048,y=2048; bool gate=false,mute=true; unsigned patch=0; };
 struct Calibration {
     int left=200,right=3900,top=3900,bottom=200;
     static int map(int v,int a,int b,int n) noexcept {
@@ -38,6 +39,10 @@ public:
         const bool fresh=!held_; held_=true;
         if(fresh && y<24 && (x<24 || x>=width-24)) {
             if(x<24) mode_=(mode_+1)%mode_count; else { c_.mute=!c_.mute; if(!c_.mute) watchdog_=false; }
+            c_.gate=false; blocked_=true; return;
+        }
+        if(fresh && x<24 && y>=height-24) {
+            c_.patch=(c_.patch+1)%sound_count; mode_=paired_mode[c_.patch];
             c_.gate=false; blocked_=true; return;
         }
         if(count_<2) ++count_;
@@ -93,6 +98,12 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept {
     // Tiny controls, visible without covering the performance surface.
     if(x<24 && y<24 && (x==4||x==19||y==4||y==19) && x>=4&&x<=19&&y>=4&&y<=19) return rgb(130,180,210);
     if(x>=296 && y<24 && x>=300&&x<=315&&y>=4&&y<=19 && (x<304||x>=312||y<8||y>=16|| (f.control.mute&&std::abs((x-300)-(y-4))<=2))) return f.control.mute?(f.watchdog?rgb(255,184,32):rgb(255,72,48)):rgb(64,220,150);
+    // Four aligned bars: legible at 1x, 2x and 4x shading, no extra buffer.
+    if(x<24 && y>=height-24 && x>=4 && x<20 && y>=220 && y<236) {
+        const unsigned index=unsigned(x-4)/4;
+        if(y>=228 || index==f.control.patch) return index==f.control.patch?rgb(238,220,128):rgb(65,80,94);
+        return rgb(12,20,28);
+    }
     return rgb(r,g,b);
 }
 // Caller provides exactly width*strip words. Last strip is always full (240/8).

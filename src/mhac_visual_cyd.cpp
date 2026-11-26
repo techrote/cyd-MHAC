@@ -4,7 +4,7 @@
 #include <XPT2046_Touchscreen.h>
 #include <LovyanGFX.hpp>
 #include "mhac_platform.hpp"
-#include "mhac_visual.hpp"
+#include "mhac_visual_audio.hpp"
 namespace {
 using namespace mhac::visual;
 static_assert(mhac::contract_version==1,"visual contract pin required");
@@ -23,7 +23,7 @@ Display lcd; SPIClass touchBus(VSPI); XPT2046_Touchscreen touch(33);
 Surface ui; Calibration cal; Frame frame; uint16_t pixels[width*strip];
 bool ready=false, fault=false; int row=0; unsigned quality=2, fastFrames=0;
 uint32_t lastPoll=0, frameStart=0, frameUs=0, maxStripUs=0, frames=0;
-void publish() { const auto c=ui.control(); mhac::exchange.publish(c.x,c.y,c.gate,c.mute); }
+void publish() { publishControl(mhac::exchange,ui.control()); }
 }
 void mhac_ui_begin() {
     pinMode(0,INPUT_PULLUP); pinMode(21,OUTPUT); digitalWrite(21,LOW);

@@ -5,6 +5,7 @@ on:
       - 'include/mhac_*.hpp'
       - 'src/main.cpp'
       - 'tests/audio_test.cpp'
+      - 'tests/patch_test.cpp'
       - 'platformio.ini'
       - '.github/workflows/audio.yml'
 permissions:
@@ -19,6 +20,8 @@ jobs:
         run: |
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread -Iinclude tests/audio_test.cpp -o /tmp/audio_test
           /tmp/audio_test
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/patch_test.cpp -o /tmp/patch_test
+          /tmp/patch_test
       - name: Target compile
         run: |
           python3 -m venv /tmp/pio
