@@ -1,0 +1,27 @@
+name: Audio qualification
+on:
+  pull_request:
+    paths:
+      - 'include/mhac_*.hpp'
+      - 'src/main.cpp'
+      - 'tests/audio_test.cpp'
+      - 'platformio.ini'
+      - '.github/workflows/audio.yml'
+permissions:
+  contents: read
+jobs:
+  host-and-target:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Host regression
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/audio_test.cpp -o /tmp/audio_test
+          /tmp/audio_test
+      - name: Target compile
+        run: |
+          python3 -m venv /tmp/pio
+          /tmp/pio/bin/pip install platformio==6.1.18
+          /tmp/pio/bin/pio run -e cyd
+          sha256sum .pio/build/cyd/firmware.bin
