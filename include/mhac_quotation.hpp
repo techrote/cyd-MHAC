@@ -13,7 +13,7 @@ public:
     static constexpr unsigned interval=3000, history_samples=4*interval;
     void reset() noexcept { *this=Quotation{}; }
     template<class Sine>
-    float sample(uint32_t phase,uint32_t step,float y,float carrier,bool capture,bool inhibit,Sine sine) noexcept {
+    float sample(uint32_t phase,uint32_t step,float y,float carrier,bool capture,bool inhibit,Sine sine,bool counter=false) noexcept {
         if(inhibit) { filled_=0; cursor_=0; until_=0; }
         if(capture && !inhibit) {
             if(until_==0) {
@@ -23,7 +23,13 @@ public:
                     // Do not reset its audible phase; only seed a silent voice.
                     if(blend_==0.f) { step_=step; timbre_=y; phase_=phase-step; }
                 }
-                if(filled_==4) { target_=marks_[cursor_]; heard_=true; }
+                if(filled_==4) {
+                    target_=marks_[cursor_]; heard_=true;
+                    // Counterquotation: alternate a lower octave and upper fifth
+                    // on recalled marks, retaining the original pitch in history.
+                    // Engine steps are bounded to 110..880 Hz at 24 kHz.
+                    if(counter) target_.step=(cursor_&1u)?target_.step+target_.step/2u:target_.step/2u;
+                }
                 marks_[cursor_]={step,y}; cursor_=(cursor_+1u)&3u;
                 if(filled_<4) ++filled_;
                 until_=interval;

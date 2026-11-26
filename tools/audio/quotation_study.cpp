@@ -23,7 +23,8 @@ static std::vector<int16_t> perform(unsigned chunk,unsigned mode,unsigned depth)
         const unsigned x=notes[(t/47)%8], y=depth;
         if(mode==0) io.publish_quotation(x,y,gate,mute);
         else if(mode==1) io.publish(x,y,gate,mute);
-        else raw(io,x,y,gate,mute,mode==2?0u:quotation_opt_in|modal_opt_in);
+        else if(mode==4) io.publish_counterquotation(x,y,gate,mute);
+        else raw(io,x,y,gate,mute,mode==2?0u:mode==5?counterquotation_opt_in:mode==6?counterquotation_opt_in|quotation_opt_in|modal_opt_in:quotation_opt_in|modal_opt_in);
         const unsigned n=std::min<unsigned>(block,out.size()-off);
         for(unsigned i=0;i<n;) { const auto k=std::min(chunk,n-i); engine.render(io,out.data()+off+i,k); i+=k; }
         off+=n;
@@ -76,6 +77,26 @@ int main(int argc,char** argv) {
         }
     }
     std::cout<<"rapid_rearm_profiles="<<retriggers<<'\n';
+    // Observe actual recalled oscillator increments after each mark settles.
+    unsigned pitch_checks=0;
+    for(uint32_t s:{20000000u,50000000u,150000000u}) {
+        for(bool counter:{false,true}) {
+            Quotation voice; uint32_t p=0, last_phase=0, increment=0;
+            unsigned calls=0;
+            auto probe=[&](uint32_t v) { if(calls++==0) { increment=v-last_phase; last_phase=v; } return sine(v); };
+            for(unsigned i=0;i<3*Quotation::history_samples;++i) {
+                p+=s; calls=0;
+                const float value=voice.sample(p,s,1.f,0.f,true,false,probe,counter);
+                check(std::abs(value)<=1.f,"counterquotation bound");
+                if(i<Quotation::history_samples) check(calls==0,"counterquotation premature recall");
+                if(i>=Quotation::history_samples && i%Quotation::interval==Quotation::interval-1) {
+                    const unsigned mark=(i-Quotation::history_samples)/Quotation::interval;
+                    const uint32_t expected=counter?((mark&1u)?s+s/2u:s/2u):s;
+                    check(calls==2 && std::abs(int64_t(increment)-expected)<=63,"recalled interval"); ++pitch_checks;
+                }
+            }
+        }
+    }
     auto dry=perform(128,0,0), half=perform(128,0,2048), wet=perform(128,0,4095);
     for(unsigned y:{0u,2048u,4095u}) {
         auto a=perform(128,0,y); check(a==perform(31,0,y) && a==perform(97,0,y),"partition");
@@ -83,6 +104,11 @@ int main(int argc,char** argv) {
     check(dry==perform(128,1,0),"dry must be legacy carrier");
     check(half!=wet && dry!=wet,"depth contrast");
     auto legacy=perform(128,1,4095); check(legacy==perform(128,2,4095) && legacy==perform(128,3,4095),"legacy opt-in fallback");
+    auto counter=perform(128,4,4095);
+    check(counter!=wet && counter==perform(31,4,4095) && counter==perform(97,4,4095),"counterquotation contrast/partition");
+    check(dry==perform(128,4,0),"counterquotation dry");
+    check(legacy==perform(128,5,4095) && legacy==perform(128,6,4095),"v5 flag fallback");
+    std::cout<<"counterquotation_pitch_checks="<<pitch_checks<<" hash="<<std::hex<<hash(counter)<<std::dec<<'\n';
     // Stop producer while active, renew the same stale gate, then release/rearm.
     Engine e; Exchange io; std::array<int16_t,block> b{};
     for(unsigned k=0;k<120;++k) { io.publish_quotation(k*31%4096,4095,true,false); e.render(io,b.data(),block); }
@@ -92,5 +118,5 @@ int main(int argc,char** argv) {
     io.publish_quotation(1000,4095,false,false); e.render(io,b.data(),block); io.publish_quotation(1000,4095,true,false); e.render(io,b.data(),block);
     check(std::any_of(b.begin(),b.end(),[](int16_t v){return v!=0;}),"fresh rearm failed");
     std::cout<<"history="<<Quotation::history_samples<<" active_recall="<<active<<" engine_bytes="<<sizeof(Engine)<<" hashes="<<std::hex<<hash(dry)<<','<<hash(half)<<','<<hash(wet)<<std::dec<<'\n';
-    if(argc==4) { wav(argv[1],dry); wav(argv[2],half); wav(argv[3],wet); }
+    if(argc==4 || argc==5) { wav(argv[1],dry); wav(argv[2],half); wav(argv[3],wet); if(argc==5) wav(argv[4],counter); }
 }

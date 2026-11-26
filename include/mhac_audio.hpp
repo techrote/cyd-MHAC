@@ -20,6 +20,9 @@ constexpr uint32_t modal_opt_in = 1u<<29;
 // v4 opt-in; legacy catalogue counts and preset codecs are unchanged.
 constexpr unsigned quotation_extension_version=4, quotation_patch_index=7, mix_patch_count=8;
 constexpr uint32_t quotation_opt_in=1u<<30;
+// v5 is a session-only variant of the v4 wire ID, not another mixer weight.
+constexpr unsigned counterquotation_extension_version=5, counterquotation_session_index=8;
+constexpr uint32_t counterquotation_opt_in=1u<<31;
 constexpr unsigned motif_period = rate / 2, echo_samples = 1536;
 constexpr unsigned control_lease_samples = rate / 2;
 static_assert(std::atomic<uint32_t>::is_always_lock_free, "32-bit mailbox required");
@@ -41,6 +44,9 @@ struct Exchange {
     }
     void publish_quotation(unsigned x,unsigned y,bool gate,bool mute) noexcept {
         publish_word(x,y,gate,mute,quotation_patch_index,quotation_opt_in);
+    }
+    void publish_counterquotation(unsigned x,unsigned y,bool gate,bool mute) noexcept {
+        publish_word(x,y,gate,mute,quotation_patch_index,quotation_opt_in|counterquotation_opt_in);
     }
 private:
     void publish_word(unsigned x,unsigned y,bool gate,bool mute,unsigned id,uint32_t extension) noexcept {
@@ -91,6 +97,7 @@ public:
         const unsigned patch=id<extended_patch_count?id:
             (id==modal_patch_index && (c&modal_opt_in)?modal_patch_index:
             (id==quotation_patch_index && (c&quotation_opt_in) && !(c&modal_opt_in)?quotation_patch_index:0u));
+        const bool counter=patch==quotation_patch_index && (c&counterquotation_opt_in);
         const float x=float(c&4095u)/4095.f, y=float((c>>12)&4095u)/4095.f;
         const float target=110.f*std::exp2(3.f*x);
         const bool requested=(c&(1u<<24)) && !(c&(1u<<25));
@@ -161,7 +168,7 @@ public:
             float quote=0.f;
             if(weights_[quotation_patch_index] && env_>0.f) {
                 const bool inhibit=(c&(1u<<25)) || (requested && !active) || patch!=quotation_patch_index;
-                quote=quotation_.sample(phase_,step,morph_,a,active && patch==quotation_patch_index,inhibit,sine);
+                quote=quotation_.sample(phase_,step,morph_,a,active && patch==quotation_patch_index,inhibit,sine,counter);
                 quotation_used_=true;
             } else if(quotation_used_) { quotation_.reset(); quotation_used_=false; }
             float sound=original;
