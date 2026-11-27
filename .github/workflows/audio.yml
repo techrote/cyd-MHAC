@@ -71,6 +71,8 @@ jobs:
           /tmp/quotation_study | tee receipts/quotation-study.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/catalogue_stress.cpp -o /tmp/catalogue_stress
           /tmp/catalogue_stress | tee receipts/catalogue-stress.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/score_render.cpp -o /tmp/score_render
+          /tmp/score_render tools/audio/score_counterpoint.csv | tee receipts/score-render.txt
       - name: Target compile
         shell: bash
         run: |
