@@ -255,6 +255,9 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
     // Y-only gesture overdub: amber when armed; available only during playback.
     if(x>=212 && x<228 && y>=8 && y<16 && f.loop_state==GestureLoop::State::Playing)
         return f.loop_preview.overdub?rgb(255,184,32):rgb(100,132,150);
+    // Pitch overdub: cyan when armed, distinct from amber timbre.
+    if(x>=244 && x<260 && y>=8 && y<16 && f.loop_state==GestureLoop::State::Playing)
+        return f.loop_preview.pitchOverdub?rgb(80,220,240):rgb(100,132,150);
     // Tiny controls, visible without covering the performance surface.
     if(x<24 && y<24 && (x==4||x==19||y==4||y==19) && x>=4&&x<=19&&y>=4&&y<=19) return rgb(130,180,210);
     if(x>=296 && y<24 && x>=300&&x<=315&&y>=4&&y<=19 && (x<304||x>=312||y<8||y>=16|| (f.control.mute&&std::abs((x-300)-(y-4))<=2))) return f.control.mute?(f.watchdog?rgb(255,184,32):rgb(255,72,48)):rgb(64,220,150);

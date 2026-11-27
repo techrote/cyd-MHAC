@@ -14,7 +14,7 @@ public:
         struct Coordinate { uint16_t x=0,y=0; };
         Coordinate points[preview_capacity]{};
         uint8_t count=0;
-        bool overdub=false;
+        bool overdub=false, pitchOverdub=false;
     };
     static constexpr uint32_t limit_ms=4000, interval_ms=16, rest_ms=100;
 private:
@@ -91,6 +91,14 @@ public:
         points_[pointIndex(recordedTime(phase))].y=uint16_t(std::min(y,4095u));
         return true;
     }
+    // In-place pitch edit, same transport and rest semantics as timbre.
+    bool paintPitch(uint32_t now,unsigned x) noexcept {
+        if(state_!=State::Playing) return false;
+        const auto phase=phaseAt(now);
+        if(phase>=activeWall()) return false;
+        points_[pointIndex(recordedTime(phase))].x=uint16_t(std::min(x,4095u));
+        return true;
+    }
     Point play(uint32_t now,bool smoothX=true,bool smoothY=true) noexcept {
         if(state_!=State::Playing) return {};
         const uint32_t active=activeWall(), phase=phaseAt(now);
@@ -118,5 +126,6 @@ constexpr const char* loopStyleName(GestureLoop::Style s) noexcept {
     }
 }
 constexpr bool overdubSelector(int x,int y) noexcept { return x>=208 && x<232 && y>=0 && y<24; }
+constexpr bool pitchOverdubSelector(int x,int y) noexcept { return x>=240 && x<264 && y>=0 && y<24; }
 constexpr bool loopStyleSelector(int x,int y) noexcept { return x>=176 && x<200 && y>=0 && y<24; }
 }

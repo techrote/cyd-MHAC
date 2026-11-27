@@ -105,3 +105,10 @@ regardless of XY assignment; Rhythm retains four discrete values. Pitch,
 recorded length and gate/rest timing remain unchanged. Unarmed performance
 touch still stops the loop. Mute and watchdog still cancel. Editing is
 session-only and destructive to the painted timbre points; no undo or save.
+
+Pitch overdub: during playback tap the separate top bar (x240–263, y0–23)
+to arm (cyan). Drag within the performance surface to repaint only pitch.
+Horizontal absolute position follows the selected scale, except Note lattice
+uses the exact touched note cell. Recorded timbre and gate/rest timing remain
+unchanged. Pitch and timbre arm states are exclusive; lift to disarm. This
+is session-only destructive editing with no undo or save.

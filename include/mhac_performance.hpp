@@ -6,9 +6,9 @@ class PerformanceSurface {
     Surface surface_;
     GestureLoop loop_;
     bool down_=false, consumed_=false, transport_=false, visualOnly_=false;
-    bool overdubArmed_=false, editContact_=false, painting_=false;
+    bool overdubArmed_=false, pitchArmed_=false, editContact_=false, painting_=false;
     uint32_t transportLast_=0;
-    void stopLoop() noexcept { loop_.stop(); overdubArmed_=false; }
+    void stopLoop() noexcept { loop_.stop(); overdubArmed_=pitchArmed_=false; }
     void cancelIfMuted() noexcept { if(surface_.control().mute) stopLoop(); }
 public:
     Control control() const noexcept { return surface_.control(); }
@@ -20,7 +20,7 @@ public:
     bool factoryAudition() const noexcept { return surface_.factoryAudition(); }
     bool watchdogLatched() const noexcept { return surface_.watchdogLatched(); }
     GestureLoop::State loopState() const noexcept { return loop_.state(); }
-    GestureLoop::Preview loopPreview() const noexcept { auto p=loop_.preview(); p.overdub=overdubArmed_; return p; }
+    GestureLoop::Preview loopPreview() const noexcept { auto p=loop_.preview(); p.overdub=overdubArmed_; p.pitchOverdub=pitchArmed_; return p; }
     GestureLoop::Style loopStyle() const noexcept { return loop_.style(); }
     void expire(uint32_t now) noexcept {
         surface_.expire(now);
@@ -35,8 +35,11 @@ public:
             const bool playing=loop_.state()==GestureLoop::State::Playing;
             if(playing && overdubSelector(x,y)) {
                 consumed_=editContact_=visualOnly_=true; transportLast_=now;
-                overdubArmed_=!overdubArmed_;
-            } else if(playing && overdubArmed_ && x>=24 && x<296 && y>=24 && y<216) {
+                overdubArmed_=!overdubArmed_; pitchArmed_=false;
+            } else if(playing && pitchOverdubSelector(x,y)) {
+                consumed_=editContact_=visualOnly_=true; transportLast_=now;
+                pitchArmed_=!pitchArmed_; overdubArmed_=false;
+            } else if(playing && (overdubArmed_ || pitchArmed_) && x>=24 && x<296 && y>=24 && y<216) {
                 consumed_=editContact_=painting_=visualOnly_=true; transportLast_=now;
             } else if(loopStyleSelector(x,y)) {
                 consumed_=transport_=true; transportLast_=now; loop_.nextStyle();
@@ -56,12 +59,20 @@ public:
             surface_.sample(false,0,0,now);
             if((transport_ || editContact_) && down) transportLast_=now;
             if(painting_ && down && !surface_.control().mute && loop_.state()==GestureLoop::State::Playing) {
-                const auto value=surface_.mapping()==XYMap::Rhythm?rhythmValue(rhythmBand(y)):touchPoint(x,y).y;
-                loop_.paintTimbre(now,value);
+                if(pitchArmed_) {
+                    // Horizontal absolute pitch, except the lattice selects an exact note cell.
+                    const auto value=surface_.mapping()==XYMap::Lattice?
+                        pitchCoordinate(latticeCell(x,y,surface_.scale()).note):
+                        mapPitch(touchPoint(x,y).x,surface_.scale());
+                    loop_.paintPitch(now,value);
+                } else {
+                    const auto value=surface_.mapping()==XYMap::Rhythm?rhythmValue(rhythmBand(y)):touchPoint(x,y).y;
+                    loop_.paintTimbre(now,value);
+                }
             }
             if(!down) {
                 if(transport_) loop_.restartAfterRest(now);
-                if(painting_) overdubArmed_=false;
+                if(painting_) overdubArmed_=pitchArmed_=false;
                 consumed_=transport_=editContact_=painting_=visualOnly_=false;
             }
             return;
