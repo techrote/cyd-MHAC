@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <driver/i2s.h>
 #include <esp_timer.h>
+#include <cstdio>
 #include "mhac_platform.hpp"
 #include "mhac_dac.hpp"
 #include "mhac_audio_start.hpp"
@@ -12,6 +13,7 @@ static_assert(mhac::extended_patch_count>=mhac::preset_catalog_v1,"preset catalo
 namespace mhac {
 Exchange exchange;
 TimingMailbox audio_timing;
+PrepareProfileMailbox audio_profile;
 std::atomic<uint32_t> audio_blocks{0}, audio_errors{0};
 }
 static mhac::Engine engine;
@@ -20,6 +22,7 @@ static void audio_task(void*) {
     int16_t samples[mhac::block];
     uint16_t slots[mhac::block*2];
     mhac::TimingMeter timing(mhac::audio_block_budget_us);
+    mhac::PrepareProfiler profile;
 #ifndef MHAC_DAC_LEGACY_FLOOR
     mhac::DacQuantizer dac;
 #endif
@@ -42,6 +45,7 @@ static void audio_task(void*) {
         const auto end=uint32_t(esp_timer_get_time());
         const bool ok=rc==ESP_OK && written==sizeof(slots);
         timing.record(start,rendered,prepared,end,ok,mhac::audio_timing);
+        profile.record(start,prepared,ok,mhac::audio_profile);
         if(!ok) {
             mhac::audio_errors.fetch_add(1,std::memory_order_relaxed);
             i2s_stop(port);
@@ -183,9 +187,29 @@ void setup() {
     Serial.println(ready?"MHAC audio initialized; serial 1-9, A-P, Q quotation, T counterquotation, V Formant Reed, p, 0, m, d, s/r legacy, S/R extended":"MHAC audio initialization FAILED");
     mhac_ui_begin();
 }
+// Common UI thread only; also works when the visual lane overrides weak hooks.
+// Report only after an explicit mute, with a whole line fitting the TX buffer.
+static void report_prepare_profile() {
+    static uint32_t last=0;
+    const uint32_t now=millis();
+    if(uint32_t(now-last)<4000) return;
+    last=now;
+    const uint32_t control=mhac::exchange.control.load(std::memory_order_seq_cst);
+    if((control & (3u<<24))!=(1u<<25)) return;
+    mhac::PrepareProfile p{};
+    if(!mhac::audio_profile.read(p)) return;
+    char line[128];
+    const int n=std::snprintf(line,sizeof(line),"prepdist a=%lu q=%lu,%lu,%lu,%lu,%lu max=%lu fail=%lu\n",
+        (unsigned long)p.attempts,(unsigned long)p.bins[0],(unsigned long)p.bins[1],
+        (unsigned long)p.bins[2],(unsigned long)p.bins[3],(unsigned long)p.bins[4],
+        (unsigned long)p.max_us,(unsigned long)p.failed);
+    if(n>0 && size_t(n)<sizeof(line) && Serial.availableForWrite()>=n)
+        Serial.write(reinterpret_cast<const uint8_t*>(line),size_t(n));
+}
 void loop() {
     static mhac::AudioFaultNotice notice;
     mhac_ui_tick(); // preserve mute/fault presentation priority
     notice.poll(mhac::audio_errors, [] { Serial.println("MHAC audio terminal fault; reboot required"); });
+    report_prepare_profile();
     delay(1);
 }
