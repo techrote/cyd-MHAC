@@ -6,6 +6,8 @@ on:
       - 'include/mhac_calibration.hpp'
       - 'tests/calibration_test.cpp'
       - 'include/mhac_visual.hpp'
+      - 'include/mhac_caustic.hpp'
+      - 'tests/caustic_layers_test.cpp'
       - 'include/mhac_fault_screen.hpp'
       - 'tests/fault_screen_test.cpp'
       - 'include/mhac_scene.hpp'
@@ -128,6 +130,8 @@ jobs:
           /tmp/trace_integration receipts/trace.ppm | tee receipts/trace-integration.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/caustic_study.cpp -o /tmp/caustic_study
           /tmp/caustic_study receipts/caustic- | tee receipts/caustic-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/caustic_layers_test.cpp -o /tmp/caustic_layers_test
+          /tmp/caustic_layers_test receipts/caustic-layer- | tee receipts/caustic-layers-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/quotation_ui_test.cpp -o /tmp/quotation_ui_test
           /tmp/quotation_ui_test receipts/quotation- | tee receipts/quotation-ui-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/cellular_study.cpp -o /tmp/cellular_study

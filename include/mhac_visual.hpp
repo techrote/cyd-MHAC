@@ -13,6 +13,7 @@
 #include "mhac_trace.hpp"
 #include "mhac_gesture.hpp"
 #include "mhac_trajectory.hpp"
+#include "mhac_caustic.hpp"
 #include "mhac_factory_ui.hpp"
 #include "mhac_visual_patch.hpp"
 #include "mhac_scene.hpp"
@@ -175,18 +176,9 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
     } else if(f.mode==chime_mode) { // Chime: stylized resonating plates.
         const auto s=chimeShade(dx,dy,f.control.y,f.analysis&4095u,unsigned(ph),f.tick);
         r=s.r;g=s.g;b=s.b;
-    } else if(f.mode==caustic_mode) { // Caustic: intersecting curved light sheets.
-        // Decorative phase/peak modulation, not an acoustic field measurement.
-        const int u=x-160, w=y-120;
-        const int bend=w*w/96;
-        const int left=tri(u*3+bend+t*2+ph);
-        const int right=tri(u*3-bend-t*2+int(f.control.y>>5));
-        const int ridge=std::max(0,std::min(left,right)-120);
-        const int ring=std::max(0,tri((dx*dx+dy*dy)/160-t*2+ph)-204);
-        const int glow=ridge*(80+a)/128;
-        r=6+glow/3+ring;
-        g=10+glow+ring/2;
-        b=22+glow*3/4+ring*2;
+    } else if(f.mode==caustic_mode) { // Caustic: layered gesture-centred light sheets.
+        const auto s=causticShade(x,y,px,py,a,ph,t,int(f.control.y>>5));
+        r=s.r;g=s.g;b=s.b;
     } else if(f.mode==quotation_mode) { // Palimpsest: stylized recalled contours.
         // Procedural echoes of the current cursor; not a readout of DSP history.
         const int depth=int(f.control.y>>4);
