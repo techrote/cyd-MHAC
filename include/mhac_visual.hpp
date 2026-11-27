@@ -14,6 +14,7 @@
 #include "mhac_gesture.hpp"
 #include "mhac_factory_ui.hpp"
 #include "mhac_visual_patch.hpp"
+#include "mhac_scene.hpp"
 namespace mhac::visual {
 constexpr int width=320, height=240, strip=8;
 class Surface {
@@ -54,6 +55,14 @@ public:
         }
         if(fresh && paletteSelector(x,y)) {
             palette_=nextPalette(palette_); c_.gate=false; blocked_=true; return;
+        }
+        if(fresh && sceneSelector(x,y)) {
+            const auto i=sceneIndex(c_.patch,mode_,palette_,mapping_,scale_);
+            const auto& scene=scenes[i==scene_count?0:(i+1)%scene_count];
+            c_.patch=scene.patch; mode_=scene.mode; palette_=scene.palette;
+            mapping_=scene.mapping; scale_=scene.scale; raw_x_=scene.x;
+            c_.x=mapPitch(raw_x_,scale_); c_.y=scene.y;
+            factory_=FactorySelection{}; c_.gate=false; blocked_=true; return;
         }
         if(fresh && soundSelector(x,y)) {
             c_.patch=(c_.patch+1)%sound_count; mode_=paired_mode[c_.patch];
@@ -251,6 +260,13 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
         if(x%8>=6) return rgb(12,20,28);
         if(y>=228 || index==unsigned(f.scale)) return index==unsigned(f.scale)?rgb(116,210,240):rgb(65,80,94);
         return rgb(12,20,28);
+    }
+    // Session scene bars, independent of the persisted sound-only factory bank.
+    if(x>=40 && x<88 && y>=224 && y<236) {
+        const unsigned i=unsigned(x-40)/8;
+        const unsigned selected=sceneIndex(f.control.patch,f.mode,f.palette,f.mapping,f.scale);
+        if(x%8>=4) return rgb(12,20,28);
+        return i==selected?rgb(120,224,180):rgb(65,80,94);
     }
     // Separate factory cursor and hold-to-audition key, aligned to all quality tiers.
     if(x>=92 && x<156 && y>=224 && y<236) {

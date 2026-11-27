@@ -73,6 +73,8 @@ jobs:
           /tmp/catalogue_stress | tee receipts/catalogue-stress.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/score_render.cpp -o /tmp/score_render
           /tmp/score_render tools/audio/score_counterpoint.csv | tee receipts/score-render.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -pthread -Iinclude tools/audio/mailbox_stress.cpp -o /tmp/mailbox_stress
+          /tmp/mailbox_stress | tee receipts/mailbox-stress.txt
       - name: Target compile
         shell: bash
         run: |

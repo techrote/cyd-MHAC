@@ -143,7 +143,7 @@ int main(int argc,char** argv) {
     SDL_PauseAudioDevice(res.device,0);
     const uint32_t start=SDL_GetTicks();
     uint32_t lastFrame=start-33;
-    unsigned next=0,frames=0,lastFactory=factory_count,lastPalette=palette_count,lastMapping=xy_map_count; bool loopSeen=false,saved=false;
+    unsigned next=0,frames=0,lastFactory=factory_count,lastPalette=palette_count,lastMapping=xy_map_count,lastScene=scene_count; bool loopSeen=false,saved=false;
     while(ui.running) {
         const uint32_t now=SDL_GetTicks(), elapsed=now-start;
         SDL_Event e{};
@@ -155,9 +155,10 @@ int main(int argc,char** argv) {
             while(next<sizeof(script)/sizeof(script[0]) && elapsed>=script[next].ms) inject(ui,script[next++],now);
         }
         const auto c=ui.tick(audio,now);
-        if(ui.surface.factoryIndex()!=lastFactory || unsigned(ui.surface.palette())!=lastPalette || unsigned(ui.surface.mapping())!=lastMapping) {
-            lastFactory=ui.surface.factoryIndex(); lastPalette=unsigned(ui.surface.palette()); lastMapping=unsigned(ui.surface.mapping());
-            const std::string title=std::string("CYD-MHAC | ")+(lastFactory<factory_count?factoryEntry(lastFactory).name:"Live")+" | "+paletteName(ui.surface.palette())+" | "+xyMapName(ui.surface.mapping())+" | Esc: mute | Q: quit";
+        const auto scene=sceneIndex(ui.surface.control().patch,ui.surface.mode(),ui.surface.palette(),ui.surface.mapping(),ui.surface.scale());
+        if(scene!=lastScene || ui.surface.factoryIndex()!=lastFactory || unsigned(ui.surface.palette())!=lastPalette || unsigned(ui.surface.mapping())!=lastMapping) {
+            lastScene=scene; lastFactory=ui.surface.factoryIndex(); lastPalette=unsigned(ui.surface.palette()); lastMapping=unsigned(ui.surface.mapping());
+            const std::string title=std::string("CYD-MHAC | ")+(scene<scene_count?scenes[scene].name:lastFactory<factory_count?factoryEntry(lastFactory).name:"Live")+" | "+paletteName(ui.surface.palette())+" | "+xyMapName(ui.surface.mapping())+" | Esc: mute | Q: quit";
             SDL_SetWindowTitle(res.window,title.c_str());
         }
         if(uint32_t(now-lastFrame)>=33) {

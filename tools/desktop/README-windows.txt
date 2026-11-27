@@ -68,3 +68,17 @@ Ninth session sound: Counterquotation. From Phase Morph tap the bottom-left
 Twelfth visual engine: Diffusion. From Resonance tap top-left eleven times.
 Hold and drag to seed the reaction-diffusion field; aggregate PCM peak
 modulates its evolution. This is generative art, not acoustic telemetry.
+
+Six session scenes: tap the six green/grey bars at bottom x40–87 (release
+between taps). One tap selects sound, visual, palette, mapping and scale,
+without sounding or unmuting; next tap cycles. If you customize the scene
+by changing one of those settings, the next scene tap starts at Lantern Tide.
+Selection cancels the gesture loop and clears the factory cursor.
+Factory audition remains a separate sound-only function.
+1 Lantern Tide — Harmonic Lattice / Diffusion / pentatonic lattice.
+2 Cinder Clock — Erasure Pulse / Cellular / rhythm bands.
+3 Silver Bells — Modal Chime / Chime / pentatonic lattice.
+4 Memory Crossing — Counterquotation / Palimpsest / chromatic XY.
+5 Afterwater — Recursive Echo / Ink / fine relative XY.
+6 Dust Prism — Ring Dialect / Caustic / swapped XY.
+These are session recipes; nothing new is stored in flash.

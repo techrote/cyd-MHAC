@@ -24,7 +24,7 @@ public:
         expire(now);
         if(down && !down_) {
             const bool wasPlaying=loop_.state()==GestureLoop::State::Playing;
-            if(wasPlaying || xyMapSelector(x,y) || soundSelector(x,y) || factoryAction(x,y)!=FactoryAction::None) loop_.stop();
+            if(wasPlaying || sceneSelector(x,y) || xyMapSelector(x,y) || soundSelector(x,y) || factoryAction(x,y)!=FactoryAction::None) loop_.stop();
             if(x>=148 && x<172 && y>=0 && y<24) {
                 consumed_=true;
                 if(!wasPlaying && !surface_.control().mute) loop_.toggle();
