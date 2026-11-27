@@ -15,6 +15,7 @@
 #include "mhac_trajectory.hpp"
 #include "mhac_caustic.hpp"
 #include "mhac_glyph.hpp"
+#include "mhac_prism.hpp"
 #include "mhac_factory_ui.hpp"
 #include "mhac_visual_patch.hpp"
 #include "mhac_scene.hpp"
@@ -147,10 +148,9 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
         const int d=std::abs(dx)+std::abs(dy), e=std::abs(x-160)+std::abs(y-120);
         v=(tri(d*7-t*3+ph)+tri(e*5+t*2)+tri((dx-dy)*3+ph))/3;
         r=v/7+a/5; g=v*(80+a/2)/255; b=v*(150+a/3)/255;
-    } else if(f.mode==1) { // Prism: folded diamond lattice.
-        const int u=std::abs(x-160), w=std::abs(y-120), p=std::min(u,w), q=std::max(u,w);
-        v=tri((q+p)*4+t*2+ph) ^ tri((q-p)*9-int(f.control.y>>5));
-        r=v*(130+a/2)/255; g=tri(v+int(f.control.x>>5))/3; b=v;
+    } else if(f.mode==1) { // Prism: nested optical facets centred on the gesture.
+        const auto s=prismShade(x,y,px,py,a,ph,t,int(f.control.y>>5));
+        r=s.r;g=s.g;b=s.b;
     } else if(f.mode==2) { // Glyph: stable connected routing motifs; artistic only.
         const auto s=glyphShade(x,y,px,py,a,ph,t,int(f.control.y>>5));
         r=s.r;g=s.g;b=s.b;

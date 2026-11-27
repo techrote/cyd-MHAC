@@ -10,6 +10,8 @@ on:
       - 'tests/caustic_layers_test.cpp'
       - 'include/mhac_glyph.hpp'
       - 'tests/glyph_study.cpp'
+      - 'include/mhac_prism.hpp'
+      - 'tests/prism_study.cpp'
       - 'include/mhac_fault_screen.hpp'
       - 'tests/fault_screen_test.cpp'
       - 'include/mhac_scene.hpp'
@@ -136,6 +138,8 @@ jobs:
           /tmp/caustic_layers_test receipts/caustic-layer- | tee receipts/caustic-layers-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/glyph_study.cpp -o /tmp/glyph_study
           /tmp/glyph_study receipts/glyph- | tee receipts/glyph-study.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/prism_study.cpp -o /tmp/prism_study
+          /tmp/prism_study receipts/prism- | tee receipts/prism-study.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/quotation_ui_test.cpp -o /tmp/quotation_ui_test
           /tmp/quotation_ui_test receipts/quotation- | tee receipts/quotation-ui-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/cellular_study.cpp -o /tmp/cellular_study
