@@ -27,6 +27,8 @@ def review(lines, min_blocks=5625):
     steps = set()
     for line in lines:
         line = line.strip()
+        if line == 'MHAC audio terminal fault; reboot required':
+            flags.add('terminal audio fault')
         if line.startswith('MHAC audio initialization FAILED'):
             flags.add('audio initialization failure')
         if line.startswith('MHAC audio initialized;') or line.startswith('MHAC audio initialization FAILED'):

@@ -40,6 +40,7 @@ jobs:
           g++ --version | tee receipts/compiler.txt
           python3 tools/audio/test_verify_candidate.py -v 2>&1 | tee receipts/partition-verifier-test.txt
           python3 tools/audio/test_recovery_layout.py -v 2>&1 | tee receipts/recovery-layout-test.txt
+          (cd tools/audio && python3 -m unittest -v test_telemetry_review.py test_fault_telemetry.py) 2>&1 | tee receipts/telemetry-review-test.txt
           echo "Compile candidate only; no flash approval or physical validation." > receipts/STATUS.txt
           test "$(git hash-object tests/reference/audio_002.hpp)" = 9b17e33ad666d3a152ade642c4e363d3a51cd0ef
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -pthread -Iinclude tests/audio_test.cpp -o /tmp/audio_test
@@ -63,6 +64,8 @@ jobs:
           /tmp/timing_test | tee receipts/timing-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tools/audio/startup_fault_test.cpp -o /tmp/startup_fault_test
           /tmp/startup_fault_test | tee receipts/startup-fault-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tools/audio/fault_notice_test.cpp -o /tmp/fault_notice_test
+          /tmp/fault_notice_test | tee receipts/fault-notice-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/preset_test.cpp -o /tmp/preset_test
           /tmp/preset_test | tee receipts/preset-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/preset_store_test.cpp -o /tmp/preset_store_test

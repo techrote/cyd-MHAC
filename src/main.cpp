@@ -4,6 +4,7 @@
 #include "mhac_platform.hpp"
 #include "mhac_dac.hpp"
 #include "mhac_audio_start.hpp"
+#include "mhac_audio_fault.hpp"
 #include "mhac_performance_presets.hpp"
 #include <Preferences.h>
 static_assert(mhac::extended_patch_count>=mhac::preset_catalog_v1,"preset catalogue requires patch IDs 0-5");
@@ -97,7 +98,6 @@ void __attribute__((weak)) mhac_ui_tick() {
     if(mhac::audio_errors.load(std::memory_order_relaxed)!=0) {
         if(!fault_latched) {
             mhac::exchange.publish(512,0,false,true);
-            Serial.println("MHAC audio terminal fault; reboot required");
             fault_latched=true;
         }
         return;
@@ -179,4 +179,9 @@ void setup() {
     Serial.println(ready?"MHAC audio initialized; serial 1-9, A-P, Q quotation, T counterquotation, p, 0, m, d, s/r legacy, S/R extended":"MHAC audio initialization FAILED");
     mhac_ui_begin();
 }
-void loop() { mhac_ui_tick(); delay(1); }
+void loop() {
+    static mhac::AudioFaultNotice notice;
+    mhac_ui_tick(); // preserve mute/fault presentation priority
+    notice.poll(mhac::audio_errors, [] { Serial.println("MHAC audio terminal fault; reboot required"); });
+    delay(1);
+}
