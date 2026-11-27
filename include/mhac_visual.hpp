@@ -257,7 +257,7 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
     }
     if(x<24 && y<24 && (x==4||x==19||y==4||y==19) && x>=4&&x<=19&&y>=4&&y<=19) return rgb(130,180,210);
     if(x>=296 && y<24 && x>=300&&x<=315&&y>=4&&y<=19 && (x<304||x>=312||y<8||y>=16|| (f.control.mute&&std::abs((x-300)-(y-4))<=2))) return f.control.mute?(f.watchdog?rgb(255,184,32):rgb(255,72,48)):rgb(64,220,150);
-    // Eight aligned bars, plus three pitch-map indicators. Visible at 4x shading.
+    // Ten aligned bars, plus three pitch-map indicators. Visible at 4x shading.
     if(x<int(sound_count*4) && y>=220 && y<236) {
         const unsigned index=unsigned(x)/4;
         if(x%4==3) return rgb(12,20,28);
@@ -272,10 +272,12 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
     }
     // Session scene bars, independent of the persisted sound-only factory bank.
     if(x>=40 && x<88 && y>=224 && y<236) {
-        const unsigned i=unsigned(x-40)/8;
         const unsigned selected=sceneIndex(f.control.patch,f.mode,f.palette,f.mapping,f.scale);
-        if(x%8>=4) return rgb(12,20,28);
-        return i==selected?rgb(120,224,180):rgb(65,80,94);
+        for(unsigned i=0;i<scene_count;++i) {
+            const int start=int(sceneMarkerX(i));
+            if(x>=start && x<start+4) return i==selected?rgb(120,224,180):rgb(65,80,94);
+        }
+        return rgb(12,20,28);
     }
     // Separate factory cursor and hold-to-audition key, aligned to all quality tiers.
     if(x>=92 && x<156 && y>=224 && y<236) {

@@ -62,6 +62,8 @@ int main(int argc,char** argv) {
     }
     assert(differences>1000);std::printf("counterquotation PCM=%u changed visual pixels=%u\n",counterActive,differences);
     touch(false,0,0);tap(310,10);for(unsigned k=0;k<128;++k)block();for(auto v:pcm)assert(v==0);
+    tap(10,230);assert(ui.control().patch==mhac::formant_session_index&&ui.mode()==caustic_mode&&ui.control().mute);block();
+    assert((io.control.load()&mhac::formant_opt_in)==mhac::formant_opt_in);
     tap(10,230);assert(ui.control().patch==0&&ui.mode()==0&&ui.control().mute);block();
     assert(!(io.control.load()&(mhac::quotation_opt_in|mhac::modal_opt_in|mhac::counterquotation_opt_in)));
     tap(100,230);assert(ui.factoryIndex()==0 && ui.control().patch==factoryEntry(0).sound.patch);

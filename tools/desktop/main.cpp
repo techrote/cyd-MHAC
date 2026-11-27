@@ -143,7 +143,7 @@ int main(int argc,char** argv) {
     SDL_PauseAudioDevice(res.device,0);
     const uint32_t start=SDL_GetTicks();
     uint32_t lastFrame=start-33;
-    unsigned next=0,frames=0,lastFactory=factory_count,lastPalette=palette_count,lastMapping=xy_map_count,lastScene=scene_count,lastLoopStyle=GestureLoop::style_count; bool loopSeen=false,saved=false;
+    unsigned next=0,frames=0,lastFactory=factory_count,lastPalette=palette_count,lastMapping=xy_map_count,lastScene=scene_count,lastPatch=sound_count,lastLoopStyle=GestureLoop::style_count; bool loopSeen=false,saved=false;
     while(ui.running) {
         const uint32_t now=SDL_GetTicks(), elapsed=now-start;
         SDL_Event e{};
@@ -156,9 +156,9 @@ int main(int argc,char** argv) {
         }
         const auto c=ui.tick(audio,now);
         const auto scene=sceneIndex(ui.surface.control().patch,ui.surface.mode(),ui.surface.palette(),ui.surface.mapping(),ui.surface.scale());
-        if(scene!=lastScene || ui.surface.factoryIndex()!=lastFactory || unsigned(ui.surface.palette())!=lastPalette || unsigned(ui.surface.mapping())!=lastMapping || unsigned(ui.surface.loopStyle())!=lastLoopStyle) {
-            lastScene=scene; lastFactory=ui.surface.factoryIndex(); lastPalette=unsigned(ui.surface.palette()); lastMapping=unsigned(ui.surface.mapping()); lastLoopStyle=unsigned(ui.surface.loopStyle());
-            const std::string title=std::string("CYD-MHAC | ")+(scene<scene_count?scenes[scene].name:lastFactory<factory_count?factoryEntry(lastFactory).name:"Live")+" | "+paletteName(ui.surface.palette())+" | "+xyMapName(ui.surface.mapping())+" | Loop: "+loopStyleName(ui.surface.loopStyle())+" | Esc: mute | Q: quit";
+        if(c.patch!=lastPatch || scene!=lastScene || ui.surface.factoryIndex()!=lastFactory || unsigned(ui.surface.palette())!=lastPalette || unsigned(ui.surface.mapping())!=lastMapping || unsigned(ui.surface.loopStyle())!=lastLoopStyle) {
+            lastPatch=c.patch; lastScene=scene; lastFactory=ui.surface.factoryIndex(); lastPalette=unsigned(ui.surface.palette()); lastMapping=unsigned(ui.surface.mapping()); lastLoopStyle=unsigned(ui.surface.loopStyle());
+            const std::string title=std::string("CYD-MHAC | ")+(scene<scene_count?scenes[scene].name:lastFactory<factory_count?factoryEntry(lastFactory).name:"Live")+" | "+soundName(c.patch)+" | "+paletteName(ui.surface.palette())+" | "+xyMapName(ui.surface.mapping())+" | Loop: "+loopStyleName(ui.surface.loopStyle())+" | Esc: mute | Q: quit";
             SDL_SetWindowTitle(res.window,title.c_str());
         }
         if(uint32_t(now-lastFrame)>=33) {

@@ -28,6 +28,7 @@ on:
       - 'tests/palette_test.cpp'
       - 'include/mhac_visual_patch.hpp'
       - 'tests/chime_ui_test.cpp'
+      - 'tests/formant_ui_dispatch_test.cpp'
       - 'include/mhac_factory_ui.hpp'
       - 'include/mhac_presets.hpp'
       - 'tests/factory_ui_test.cpp'
@@ -93,6 +94,8 @@ jobs:
           git rev-parse HEAD > receipts/source-sha.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/scene_test.cpp -o /tmp/scene_test
           /tmp/scene_test receipts/scene- | tee receipts/scene-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/formant_ui_dispatch_test.cpp -o /tmp/formant_ui_dispatch_test
+          /tmp/formant_ui_dispatch_test | tee receipts/formant-ui-dispatch.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/visual_budget_test.cpp -o /tmp/visual_budget_test
           /tmp/visual_budget_test | tee receipts/visual-budget-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/palette_test.cpp -o /tmp/palette_test

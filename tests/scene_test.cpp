@@ -28,7 +28,7 @@ int main(int argc,char** argv) {
             for(unsigned step:{1u,2u,4u}) {
                 std::array<uint16_t,width*strip> raster{}; renderStrip(f,224,step,raster.data());
                 for(unsigned k=0;k<scene_count;++k) {
-                    assert(raster[40+k*8]==(k==i?rgb(120,224,180):rgb(65,80,94))); ++pixels;
+                    assert(raster[sceneMarkerX(k)]==(k==i?rgb(120,224,180):rgb(65,80,94))); ++pixels;
                 }
             }
             touch(true,120,100); assert(!ui.control().gate);

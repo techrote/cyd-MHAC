@@ -13,8 +13,11 @@ inline constexpr Scene scenes[]{
     {"Memory Crossing",8,quotation_mode,Palette::Original,XYMap::Direct,Scale::Chromatic,1365,3000},
     {"Afterwater",5,5,Palette::Verdigris,XYMap::Fine,Scale::Free,683,1500},
     {"Dust Prism",2,caustic_mode,Palette::Ember,XYMap::Swapped,Scale::Free,2048,2000},
+    {"Vowel Glass",mhac::formant_session_index,caustic_mode,Palette::Silver,XYMap::Direct,Scale::Free,1365,2200},
 };
 constexpr unsigned scene_count=sizeof(scenes)/sizeof(scenes[0]);
+// Preserve the original six marker positions; the seventh uses the final 4-pixel slot.
+constexpr unsigned sceneMarkerX(unsigned i) noexcept { return 40+8*i-(i==6?4:0); }
 constexpr bool sceneSelector(int x,int y) noexcept { return x>=40 && x<88 && y>=216 && y<240; }
 constexpr unsigned sceneIndex(unsigned patch,unsigned mode,Palette palette,XYMap mapping,Scale scale) noexcept {
     for(unsigned i=0;i<scene_count;++i) {
@@ -32,5 +35,5 @@ constexpr bool validScenes() noexcept {
     }
     return true;
 }
-static_assert(scene_count==6 && validScenes(),"scene layout/contract invalid");
+static_assert(scene_count==7 && validScenes(),"scene layout/contract invalid");
 }

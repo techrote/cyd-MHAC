@@ -5,22 +5,22 @@
 using namespace mhac::visual;
 int main() {
     mhac::Exchange io;
-    for(unsigned p=0;p<10;++p) for(bool mute:{false,true}) for(bool gate:{false,true}) {
+    for(unsigned p=0;p<=sound_count;++p) for(bool mute:{false,true}) for(bool gate:{false,true}) {
         publishControl(io,Control{1234,3456,gate,mute,p});
         const auto w=io.control.load();
         assert((w&4095u)==1234 && ((w>>12)&4095u)==3456);
         assert(bool(w&(1u<<24))==gate && bool(w&(1u<<25))==mute);
-        assert(((w>>26)&7u)==(p==8?7:p<sound_count?p:0));
-        assert(bool(w&mhac::modal_opt_in)==(p==6));
-        assert(bool(w&mhac::quotation_opt_in)==(p==7||p==8));
-        assert(bool(w&mhac::counterquotation_opt_in)==(p==8));
+        assert(((w>>26)&7u)==(p==9?1:p==8?7:p<sound_count?p:0));
+        assert(bool(w&mhac::modal_opt_in)==(p==6||p==9));
+        assert(bool(w&mhac::quotation_opt_in)==(p==7||p==8||p==9));
+        assert(bool(w&mhac::counterquotation_opt_in)==(p==8||p==9));
     }
     unsigned region=0;
     for(int y=-1;y<=240;++y) for(int x=-1;x<=320;++x) {
         const bool yes=soundSelector(x,y); region+=yes;
-        assert(yes==(x>=0&&x<36&&y>=216&&y<240));
+        assert(yes==(x>=0&&x<40&&y>=216&&y<240));
     }
-    assert(region==864 && paired_mode[6]==chime_mode);
+    assert(region==960 && paired_mode[6]==chime_mode);
     mhac::Engine engine; std::array<int16_t,mhac::block> pcm{};
     auto render=[&](bool gate,bool mute,unsigned n) {
         unsigned peak=0;
@@ -65,5 +65,5 @@ int main() {
     }
     assert(loud>quiet && quiet>idle);
     std::printf("post-lift peak=%u; shade sums=%llu/%llu/%llu; mute silence PASS\n",released,(unsigned long long)idle,(unsigned long long)quiet,(unsigned long long)loud);
-    std::printf("chime UI PASS: 40 control words, %u selector pixels, strike=%u restrike=%u, shade sums=%llu/%llu\n",region,strike,restrike,(unsigned long long)idle,(unsigned long long)loud);
+    std::printf("chime UI PASS: 44 control words, %u selector pixels, strike=%u restrike=%u, shade sums=%llu/%llu\n",region,strike,restrike,(unsigned long long)idle,(unsigned long long)loud);
 }

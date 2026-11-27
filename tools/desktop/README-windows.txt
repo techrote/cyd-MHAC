@@ -74,7 +74,7 @@ pauses when another visual is selected and resumes when you return, without
 catch-up simulation or bridging across the observed inactive interval. State
 is session-only. This is generative art, not acoustic telemetry.
 
-Six session scenes: tap the six green/grey bars at bottom x40–87 (release
+Seven session scenes: tap the seven green/grey bars at bottom x40–87 (release
 between taps). One tap selects sound, visual, palette, mapping and scale,
 without sounding or unmuting; next tap cycles. If you customize the scene
 by changing one of those settings, the next scene tap starts at Lantern Tide.
@@ -86,6 +86,7 @@ Factory audition remains a separate sound-only function.
 4 Memory Crossing — Counterquotation / Palimpsest / chromatic XY.
 5 Afterwater — Recursive Echo / Ink / fine relative XY.
 6 Dust Prism — Ring Dialect / Caustic / swapped XY.
+7 Vowel Glass — Formant Reed / Caustic / Silver / direct free-pitch XY.
 These are session recipes; nothing new is stored in flash.
 
 Gesture transport: six small blue/grey bars just right of top-center
@@ -126,3 +127,12 @@ transformation, not an undo history. It disarms both overdubs; playback continue
 Gesture path: recording/playback beads are now linked by a dashed chronological
 control-coordinate path (up to 16 sampled marks). The path reflects pitch/timbre
 edits, not raw touch positions or measured DSP history. It is hidden when muted.
+
+Tenth session sound: Formant Reed. From Phase Morph, tap bottom-left nine
+times, releasing between taps. X controls pitch; Y moves two harmonic
+spectral windows for vowel-like timbre. Caustic is the paired visual, an
+artistic representation using aggregate signal features, not a formant meter.
+Alternatively select Vowel Glass via the scene strip. Selection is silent;
+explicitly unmute and release, then drag. Tap bottom-left once more to return
+to Phase Morph. The desktop title now shows the current sound. This is a
+session-only sound; the original 16 factory sounds and stored codecs are unchanged.
