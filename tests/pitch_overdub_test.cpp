@@ -10,7 +10,43 @@ static void setup(PerformanceSurface& u,unsigned m,unsigned s,uint32_t start){
  t=start+512;tap(160,10);for(unsigned i=0;i<40;++i)u.sample(true,40+int(i)*5,190-int(i)*3,t+=8);
  u.sample(false,0,0,t+=8);assert(u.loopState()==L::State::Playing);
 }
+static void mirrorUI(){
+ unsigned checks=0,changed=0;
+ for(uint32_t start:{0u,0xfffffd00u})for(unsigned m=0;m<xy_map_count;++m)for(unsigned s=0;s<L::style_count;++s){
+  PerformanceSurface a,b;setup(a,m,s,start);setup(b,m,s,start);
+  const auto original=b.loopPreview();
+  for(unsigned i=0;i<200;++i) {
+   const uint32_t t=start+856+i*5; a.sample(false,0,0,t);
+   const bool down=(i>=4 && i<8)||(i>=104 && i<108);
+   // Selector capture: dragging into the mute corner cannot trigger a second action.
+   b.sample(down,(i==4||i==104)?124:310,10,t);
+   const auto ca=a.effective(t),cb=b.effective(t);
+   assert(b.loopState()==L::State::Playing && ca.x==cb.x && ca.gate==cb.gate && ca.patch==cb.patch && !cb.mute);
+   const bool reflected=i>=4 && i<104;
+   if(reflected) {
+    assert(ca.y+cb.y>=4095 && ca.y+cb.y<=4096);
+    changed+=ca.y!=cb.y;
+   } else assert(ca.y==cb.y);
+   if(m==4)assert(cb.y%1365==0);
+   ++checks;
+  }
+  const auto restored=b.loopPreview(); assert(restored.count==original.count);
+  for(unsigned i=0;i<restored.count;++i)assert(restored.points[i].x==original.points[i].x && restored.points[i].y==original.points[i].y);
+  Frame f{}; f.control=b.control(); f.loop_state=b.loopState();
+  for(unsigned q:{1u,2u,4u}) {
+   std::array<uint16_t,width*strip+2> p{}; p.front()=0x1234; p.back()=0x5678;
+   renderStrip(f,0,q,p.data()+1);
+   assert(p[1+4*width+120]==rgb(230,170,96));
+   assert(p.front()==0x1234 && p.back()==0x5678);
+  }
+  b.sample(true,124,10,start+1900);b.expire(start+2001);
+  assert(b.control().mute && b.loopState()==L::State::Idle && !b.effective(start+2001).gate);
+ }
+ assert(changed);
+ std::printf("timbre mirror UI: %u phase/control checks, %u changed timbre controls, three strip tiers, stale mute\n",checks,changed);
+}
 int main(){
+ mirrorUI();
  // A rest cannot mutate any stored coordinate; a one-point paint preserves Y.
  L l; l.toggle(); l.observe({100,200,true},0); l.observe({300,400,true},16); l.observe({},32);
  assert(l.paintPitch(32,9999)); auto p=l.preview(); assert(p.count==2 && p.points[0].x==4095 && p.points[0].y==200 && p.points[1].y==400);

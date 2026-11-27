@@ -136,3 +136,10 @@ Alternatively select Vowel Glass via the scene strip. Selection is silent;
 explicitly unmute and release, then drag. Tap bottom-left once more to return
 to Phase Morph. The desktop title now shows the current sound. This is a
 session-only sound; the original 16 factory sounds and stored codecs are unchanged.
+
+Timbre mirror: during gesture playback tap the amber cross at top x112–135,
+y0–23. Reflects the recorded Y coordinates (4095 minus Y) without changing
+pitch, gate/rest, timing or transport. Tap again to restore the exact recording
+if no intervening timbre edit occurred. The path preview reflects the edit.
+Rhythm bands invert 0↔3 and 1↔2. Both overdub arms are cleared. Session only;
+this is a reversible transformation, not an undo history. Mute cancels playback.

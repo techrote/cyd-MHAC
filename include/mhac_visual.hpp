@@ -249,6 +249,11 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
     if(x>=244 && x<260 && y>=8 && y<16 && f.loop_state==GestureLoop::State::Playing)
         return f.loop_preview.pitchOverdub?rgb(80,220,240):rgb(100,132,150);
     // Tiny controls, visible without covering the performance surface.
+    // Timbre mirror: two symmetric wings divided by a horizontal axis.
+    if(x>=116 && x<132 && y>=4 && y<20 && f.loop_state==GestureLoop::State::Playing) {
+        const int u=(x-116)/4, v=(y-4)/4;
+        return (v==1 || v==2 || (u==1 || u==2))?rgb(230,170,96):rgb(12,20,28);
+    }
     // Retrograde pitch: opposing arrows, only available during playback.
     if(x>=276 && x<292 && y>=5 && y<19 && f.loop_state==GestureLoop::State::Playing) {
         const int u=x-276,v=y-5;

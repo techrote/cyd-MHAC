@@ -106,6 +106,13 @@ public:
         for(unsigned i=0;i<count_/2u;++i) std::swap(points_[i].x,points_[count_-1u-i].x);
         return true;
     }
+    // Reflect the recorded timbre contour, without moving pitch, time or gate.
+    // Also preserves the four Rhythm band coordinates (0,1365,2730,4095).
+    bool mirrorTimbre() noexcept {
+        if(state_!=State::Playing) return false;
+        for(unsigned i=0;i<count_;++i) points_[i].y=uint16_t(4095u-points_[i].y);
+        return true;
+    }
     Point play(uint32_t now,bool smoothX=true,bool smoothY=true) noexcept {
         if(state_!=State::Playing) return {};
         const uint32_t active=activeWall(), phase=phaseAt(now);
@@ -132,6 +139,7 @@ constexpr const char* loopStyleName(GestureLoop::Style s) noexcept {
     default: return "Original";
     }
 }
+constexpr bool timbreMirrorSelector(int x,int y) noexcept { return x>=112 && x<136 && y>=0 && y<24; }
 constexpr bool overdubSelector(int x,int y) noexcept { return x>=208 && x<232 && y>=0 && y<24; }
 constexpr bool pitchOverdubSelector(int x,int y) noexcept { return x>=240 && x<264 && y>=0 && y<24; }
 constexpr bool retrogradeSelector(int x,int y) noexcept { return x>=272 && x<296 && y>=0 && y<24; }
