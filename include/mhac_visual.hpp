@@ -14,6 +14,7 @@
 #include "mhac_gesture.hpp"
 #include "mhac_trajectory.hpp"
 #include "mhac_caustic.hpp"
+#include "mhac_glyph.hpp"
 #include "mhac_factory_ui.hpp"
 #include "mhac_visual_patch.hpp"
 #include "mhac_scene.hpp"
@@ -150,11 +151,9 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
         const int u=std::abs(x-160), w=std::abs(y-120), p=std::min(u,w), q=std::max(u,w);
         v=tri((q+p)*4+t*2+ph) ^ tri((q-p)*9-int(f.control.y>>5));
         r=v*(130+a/2)/255; g=tri(v+int(f.control.x>>5))/3; b=v;
-    } else if(f.mode==2) { // Glyph: quantised phase weave; abstract, not decoded symbols.
-        const int u=x/12, w=y/12, local=(x%12-6)*(x%12-6)+(y%12-6)*(y%12-6);
-        const int k=tri(u*19+w*31+t+ph), h=tri(u*47-w*13-t);
-        v=(local<10+(k>>4) && ((k^h)&64))?k:tri(x+y+t)/12;
-        r=v; g=v*(110+a/2)/255; b=v/5+a/8;
+    } else if(f.mode==2) { // Glyph: stable connected routing motifs; artistic only.
+        const auto s=glyphShade(x,y,px,py,a,ph,t,int(f.control.y>>5));
+        r=s.r;g=s.g;b=s.b;
     } else if(f.mode==3) { // Orbit: curved resonant shells centred on the gesture.
         const int radius=(dx*dx+dy*dy)/96;
         const int twist=tri((dx+dy)*2+t*2)-128;

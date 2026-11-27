@@ -24,6 +24,14 @@ constexpr uint32_t quotation_opt_in=1u<<30;
 constexpr unsigned counterquotation_extension_version=5, counterquotation_session_index=8;
 constexpr uint32_t counterquotation_opt_in=1u<<31;
 constexpr unsigned motif_period = rate / 2, echo_samples = 1536;
+// Early reflection reuses the existing 64 ms delay ring (24 ms tap).
+constexpr unsigned echo_early_samples = 576;
+static_assert(echo_early_samples < echo_samples, "early tap inside delay ring");
+inline float echo_early_read(const int16_t* ring,unsigned pos,unsigned valid) noexcept {
+    if(valid<echo_early_samples) return 0.f;
+    const unsigned index=pos>=echo_early_samples?pos-echo_early_samples:pos+echo_samples-echo_early_samples;
+    return float(ring[index])*(1.f/32768.f);
+}
 constexpr unsigned control_lease_samples = rate / 2;
 static_assert(std::atomic<uint32_t>::is_always_lock_free, "32-bit mailbox required");
 // Single producer per mailbox; entire control snapshot transferred in one atomic word.
@@ -177,14 +185,16 @@ public:
             const float rhythm=original*rhythm_gain_;
             float wet=0.f;
             if(weights_[5] && env_>0.f) {
-                // Fixed 64 ms delay, bounded feedback and lazy invalidation (no bulk clear).
+                // 24/64 ms reflections; only the long tap recirculates.
                 const float delayed=echo_valid_==echo_samples?float(echo_[echo_pos_])*(1.f/32768.f):0.f;
+                const float early=echo_early_read(echo_,echo_pos_,echo_valid_);
                 const float next=(active?.35f*a:0.f)+(.20f+.40f*morph_)*delayed;
                 echo_[echo_pos_]=int16_t(next*32768.f);
                 if(++echo_pos_==echo_samples) echo_pos_=0;
                 if(echo_valid_<echo_samples) ++echo_valid_;
                 const float mix=.65f*morph_;
-                wet=a*(1.f-mix)+delayed*mix;
+                const float reflection=delayed+(early-delayed)*(.5f*morph_);
+                wet=a*(1.f-mix)+reflection*mix;
             } else { echo_pos_=0; echo_valid_=0; }
             float modal=0.f;
             // Modal strikes have their own finite decay, independent of ordinary gate release.
