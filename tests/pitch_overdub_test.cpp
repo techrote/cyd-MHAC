@@ -15,6 +15,23 @@ int main(){
  L l; l.toggle(); l.observe({100,200,true},0); l.observe({300,400,true},16); l.observe({},32);
  assert(l.paintPitch(32,9999)); auto p=l.preview(); assert(p.count==2 && p.points[0].x==4095 && p.points[0].y==200 && p.points[1].y==400);
  assert(!l.paintPitch(64,0)); auto q=l.preview(); assert(q.points[0].x==4095 && q.points[0].y==200 && q.points[1].y==400);
+ // Two fresh taps reverse pitches twice, preserving transport, gate and timbre.
+ for(unsigned m=0;m<xy_map_count;++m) for(unsigned s=0;s<L::style_count;++s) {
+  PerformanceSurface a,b; setup(a,m,s,0); setup(b,m,s,0);
+  unsigned changed=0;
+  for(unsigned i=0;i<200;++i) {
+   const uint32_t t=856+i*5; a.sample(false,0,0,t);
+   const bool down=(i>=4 && i<8)||(i>=104 && i<108);
+   b.sample(down,(i==4||i==104)?284:310,10,t);
+   const auto ca=a.effective(t),cb=b.effective(t);
+   assert(b.loopState()==L::State::Playing && ca.y==cb.y && ca.gate==cb.gate && !cb.mute);
+   if(i>=104 || i<4) assert(ca.x==cb.x);
+   else changed+=ca.x!=cb.x;
+  }
+  (void)changed;
+  b.sample(true,284,10,1900); b.expire(2001);
+  assert(b.control().mute && b.loopState()==L::State::Idle);
+ }
  unsigned checks=0,edits=0,rest=0,pcmChanges=0;
  for(uint32_t start:{0u,0xfffffd00u})for(unsigned m=0;m<xy_map_count;++m)for(unsigned s=0;s<L::style_count;++s){
   PerformanceSurface a,b;setup(a,m,s,start);setup(b,m,s,start);

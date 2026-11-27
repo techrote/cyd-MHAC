@@ -112,3 +112,9 @@ Horizontal absolute position follows the selected scale, except Note lattice
 uses the exact touched note cell. Recorded timbre and gate/rest timing remain
 unchanged. Pitch and timbre arm states are exclusive; lift to disarm. This
 is session-only destructive editing with no undo or save.
+
+Pitch retrograde: during playback tap the paired-arrow marker (x272–295,
+y0–23). Reverses the order of recorded pitch values, preserving the original
+entry timestamps, timbre, transport and gate/rest timing. Tap again to restore
+the prior pitches if no intervening pitch edit occurred. This is a reversible
+transformation, not an undo history. It disarms both overdubs; playback continues.

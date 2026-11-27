@@ -35,6 +35,7 @@ on:
       - 'tests/loop_visual_live_test.cpp'
       - 'tests/overdub_test.cpp'
       - 'tests/pitch_core_test.cpp'
+      - 'tests/retrograde_test.cpp'
       - 'tests/pitch_overdub_test.cpp'
       - 'tests/performance_test.cpp'
       - 'include/mhac_trace.hpp'
@@ -107,6 +108,8 @@ jobs:
           /tmp/overdub_test | tee receipts/overdub-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/pitch_core_test.cpp -o /tmp/pitch_core_test
           /tmp/pitch_core_test | tee receipts/pitch-core-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/retrograde_test.cpp -o /tmp/retrograde_test
+          /tmp/retrograde_test | tee receipts/retrograde-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/pitch_overdub_test.cpp -o /tmp/pitch_overdub_test
           /tmp/pitch_overdub_test | tee receipts/pitch-overdub-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/fault_screen_test.cpp -o /tmp/fault_screen_test

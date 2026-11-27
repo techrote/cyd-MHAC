@@ -99,6 +99,13 @@ public:
         points_[pointIndex(recordedTime(phase))].x=uint16_t(std::min(x,4095u));
         return true;
     }
+    // Reverse the pitch sequence in recorded order, not the transport or timestamps.
+    // An involution: a second tap restores every pitch if no edit intervenes.
+    bool retrogradePitch() noexcept {
+        if(state_!=State::Playing || count_<2) return false;
+        for(unsigned i=0;i<count_/2u;++i) std::swap(points_[i].x,points_[count_-1u-i].x);
+        return true;
+    }
     Point play(uint32_t now,bool smoothX=true,bool smoothY=true) noexcept {
         if(state_!=State::Playing) return {};
         const uint32_t active=activeWall(), phase=phaseAt(now);
@@ -127,5 +134,6 @@ constexpr const char* loopStyleName(GestureLoop::Style s) noexcept {
 }
 constexpr bool overdubSelector(int x,int y) noexcept { return x>=208 && x<232 && y>=0 && y<24; }
 constexpr bool pitchOverdubSelector(int x,int y) noexcept { return x>=240 && x<264 && y>=0 && y<24; }
+constexpr bool retrogradeSelector(int x,int y) noexcept { return x>=272 && x<296 && y>=0 && y<24; }
 constexpr bool loopStyleSelector(int x,int y) noexcept { return x>=176 && x<200 && y>=0 && y<24; }
 }

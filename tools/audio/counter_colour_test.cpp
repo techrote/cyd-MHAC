@@ -31,6 +31,32 @@ static void colour_test() {
     }
     std::cout<<"colour_targets="<<comparisons<<'\n';
 }
+// Isolate the recall blend with unit oscillators and a silent carrier.
+static void articulation_test() {
+    unsigned checks=0;
+    for(bool counter:{false,true}) {
+        Quotation q; uint32_t phase=0; constexpr uint32_t step=20000000;
+        const auto unit=[](uint32_t) { return 1.f; };
+        for(unsigned i=0;i<3*Quotation::history_samples;++i) {
+            phase+=step;
+            const float v=q.sample(phase,step,1.f,0.f,true,false,unit,counter);
+            const unsigned mark=i/Quotation::interval, at=i%Quotation::interval;
+            if(mark<4) { check(v==0.f,"premature recall"); continue; }
+            if(at==899 && mark>4) {
+                if(counter && (mark&1u)) check(v<.008f && v>.007f,"answer breath depth");
+                else check(v>.69f,"unexpected recall interruption");
+                ++checks;
+            }
+            if(at==Quotation::interval-1) { check(v>.6999f && v<=.70001f,"recall recovery"); ++checks; }
+        }
+        // Inhibit must clear history even if the current answer was ducked.
+        for(unsigned i=0;i<3000;++i) q.sample(phase+=step,step,1.f,0.f,false,true,unit,counter);
+        for(unsigned i=0;i<Quotation::history_samples;++i) {
+            check(q.sample(phase+=step,step,1.f,0.f,true,false,unit,counter)==0.f,"inhibited history replay");
+        }
+    }
+    std::cout<<"articulation_boundaries="<<checks<<'\n';
+}
 static void publish(Exchange& io,unsigned mode,unsigned x,unsigned y,bool gate,bool mute) {
     if(mode==8) io.publish_counterquotation(x,y,gate,mute);
     else if(mode==7) io.publish_quotation(x,y,gate,mute);
@@ -65,7 +91,7 @@ static void write_pcm(const std::string& path,const std::vector<int16_t>& pcm) {
 }
 int main(int argc,char** argv) {
     check(argc==1 || (argc==3 && std::string(argv[1])=="--render"),"usage: test [--render PREFIX]");
-    if(argc==1) colour_test();
+    if(argc==1) { colour_test(); articulation_test(); }
     unsigned frames=0;
     for(unsigned mode=0;mode<9;++mode) {
         auto pcm=render(mode,128);

@@ -33,7 +33,11 @@ public:
         expire(now);
         if(down && !down_) {
             const bool playing=loop_.state()==GestureLoop::State::Playing;
-            if(playing && overdubSelector(x,y)) {
+            if(playing && retrogradeSelector(x,y)) {
+                consumed_=editContact_=visualOnly_=true; transportLast_=now;
+                overdubArmed_=pitchArmed_=false;
+                loop_.retrogradePitch();
+            } else if(playing && overdubSelector(x,y)) {
                 consumed_=editContact_=visualOnly_=true; transportLast_=now;
                 overdubArmed_=!overdubArmed_; pitchArmed_=false;
             } else if(playing && pitchOverdubSelector(x,y)) {
