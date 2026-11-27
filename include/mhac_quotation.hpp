@@ -46,7 +46,12 @@ public:
         // No audible quotation until a full history interval has elapsed.
         if(inhibit) heard_=false;
         const bool ready=heard_;
-        blend_+=((ready && !inhibit?.70f*y:0.f)-blend_)*.005f;
+        // Counterquotation ducks the upper-fifth answer for the first 900
+        // captured samples (37.5 ms at 24 kHz), then restores the recall mix.
+        // cursor_ points to the next mark; even means the recalled mark was odd.
+        // The existing smoother shapes the breath; no new voice or state.
+        const bool breath=counter && capture && !(cursor_&1u) && until_>=interval-900u;
+        blend_+=((ready && !inhibit && !breath?.70f*y:0.f)-blend_)*.005f;
         if(blend_<.00001f) blend_=0.f;
         const int32_t difference=int32_t(target_.step)-int32_t(step_);
         step_=uint32_t(int32_t(step_)+difference/64);
