@@ -18,6 +18,9 @@ on:
       - 'tests/scene_test.cpp'
       - 'include/mhac_visual_budget.hpp'
       - 'tests/visual_budget_test.cpp'
+      - 'include/mhac_prepare_profile.hpp'
+      - 'tests/prepare_profile_ui_test.cpp'
+      - 'tools/audio/prepare_profile_test.cpp'
       - 'include/mhac_palette.hpp'
       - 'include/mhac_xy_map.hpp'
       - 'include/mhac_rhythm_legend.hpp'
@@ -93,6 +96,10 @@ jobs:
           set -euo pipefail
           mkdir -p receipts
           git rev-parse HEAD > receipts/source-sha.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread -Iinclude tools/audio/prepare_profile_test.cpp -o /tmp/prepare_profile_test
+          /tmp/prepare_profile_test | tee receipts/prepare-profile-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/prepare_profile_ui_test.cpp -o /tmp/prepare_profile_ui_test
+          /tmp/prepare_profile_ui_test | tee receipts/prepare-profile-ui-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/scene_test.cpp -o /tmp/scene_test
           /tmp/scene_test receipts/scene- | tee receipts/scene-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/formant_ui_dispatch_test.cpp -o /tmp/formant_ui_dispatch_test

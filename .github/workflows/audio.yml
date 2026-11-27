@@ -64,6 +64,8 @@ jobs:
           /tmp/features_integration | tee receipts/features-integration.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread -Iinclude tests/timing_test.cpp -o /tmp/timing_test
           /tmp/timing_test | tee receipts/timing-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread -Iinclude tools/audio/prepare_profile_test.cpp -o /tmp/prepare_profile_test
+          /tmp/prepare_profile_test | tee receipts/prepare-profile-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tools/audio/startup_fault_test.cpp -o /tmp/startup_fault_test
           /tmp/startup_fault_test | tee receipts/startup-fault-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tools/audio/fault_notice_test.cpp -o /tmp/fault_notice_test
