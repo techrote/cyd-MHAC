@@ -28,6 +28,7 @@ on:
       - 'include/mhac_performance.hpp'
       - 'include/mhac_timing.hpp'
       - 'tests/gesture_test.cpp'
+      - 'tests/loop_transport_test.cpp'
       - 'tests/performance_test.cpp'
       - 'include/mhac_trace.hpp'
       - 'include/mhac_features.hpp'
@@ -89,6 +90,8 @@ jobs:
           /tmp/visual_test receipts | tee receipts/host-replay.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/gesture_test.cpp -o /tmp/gesture_test
           /tmp/gesture_test | tee receipts/gesture-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/loop_transport_test.cpp -o /tmp/loop_transport_test
+          /tmp/loop_transport_test | tee receipts/loop-transport-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/performance_test.cpp -o /tmp/performance_test
           /tmp/performance_test receipts/lattice.ppm | tee receipts/performance-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/factory_ui_test.cpp -o /tmp/factory_ui_test

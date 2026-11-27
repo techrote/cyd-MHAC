@@ -122,6 +122,7 @@ struct Frame {
     XYMap mapping=XYMap::Direct;
     const CellularField* cellular=nullptr;
     const DiffusionField* diffusion=nullptr;
+    GestureLoop::Style loop_style=GestureLoop::Style::Original;
 };
 inline int tri(int v) noexcept { const unsigned u=unsigned(v)&255u; return int(u<128?u*2:(255-u)*2); }
 inline uint16_t rgb(int r,int g,int b) noexcept {
@@ -244,6 +245,11 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
         case GestureLoop::State::Playing: return rgb(80,220,200);
         default: return rgb(65,80,94);
         }
+    }
+    // Five aligned transport bars; original/step, glide, half, reverse, double.
+    if(x>=176 && x<196 && y>=8 && y<16) {
+        const unsigned i=unsigned(x-176)/4;
+        return i==unsigned(f.loop_style)?rgb(160,202,236):rgb(65,80,94);
     }
     // Tiny controls, visible without covering the performance surface.
     if(x<24 && y<24 && (x==4||x==19||y==4||y==19) && x>=4&&x<=19&&y>=4&&y<=19) return rgb(130,180,210);

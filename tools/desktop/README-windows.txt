@@ -82,3 +82,14 @@ Factory audition remains a separate sound-only function.
 5 Afterwater — Recursive Echo / Ink / fine relative XY.
 6 Dust Prism — Ring Dialect / Caustic / swapped XY.
 These are session recipes; nothing new is stored in flash.
+
+Gesture transport: five small blue/grey bars just right of top-center
+(x176–199, y0–23). Tap to cycle Original (stepped 1x), Glide (1x),
+Half glide (0.5x), Reverse (stepped 1x backward), Double (stepped 2x).
+Record with the original top-center control; release to replay.
+Changing style during playback preserves the recording, releases its gate
+during the contact, and starts the new style after a 100 ms gate-off rest.
+Audio release tails may continue during a rest. Pitch grids and rhythm
+bands remain stepped even in glide styles. Other fresh touches interrupt
+playback. Mute, watchdog or stale selector contact cancel the loop.
+The current style appears in the desktop title. Session-only, not saved.

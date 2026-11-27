@@ -5,7 +5,8 @@ namespace mhac::visual {
 class PerformanceSurface {
     Surface surface_;
     GestureLoop loop_;
-    bool down_=false, consumed_=false;
+    bool down_=false, consumed_=false, transport_=false;
+    uint32_t transportLast_=0;
     void cancelIfMuted() noexcept { if(surface_.control().mute) loop_.stop(); }
 public:
     Control control() const noexcept { return surface_.control(); }
@@ -17,23 +18,36 @@ public:
     bool factoryAudition() const noexcept { return surface_.factoryAudition(); }
     bool watchdogLatched() const noexcept { return surface_.watchdogLatched(); }
     GestureLoop::State loopState() const noexcept { return loop_.state(); }
-    void expire(uint32_t now) noexcept { surface_.expire(now); cancelIfMuted(); }
+    GestureLoop::Style loopStyle() const noexcept { return loop_.style(); }
+    void expire(uint32_t now) noexcept {
+        surface_.expire(now);
+        if(transport_ && down_ && uint32_t(now-transportLast_)>100u) forceMute();
+        cancelIfMuted();
+    }
     void observeWatchdog(uint32_t trips) noexcept { surface_.observeWatchdog(trips); cancelIfMuted(); }
     void forceMute() noexcept { surface_.forceMute(); loop_.stop(); }
     void sample(bool down,int x,int y,uint32_t now) noexcept {
         expire(now);
         if(down && !down_) {
-            const bool wasPlaying=loop_.state()==GestureLoop::State::Playing;
-            if(wasPlaying || sceneSelector(x,y) || xyMapSelector(x,y) || soundSelector(x,y) || factoryAction(x,y)!=FactoryAction::None) loop_.stop();
-            if(x>=148 && x<172 && y>=0 && y<24) {
-                consumed_=true;
-                if(!wasPlaying && !surface_.control().mute) loop_.toggle();
+            if(loopStyleSelector(x,y)) {
+                consumed_=transport_=true; transportLast_=now; loop_.nextStyle();
+            } else {
+                const bool wasPlaying=loop_.state()==GestureLoop::State::Playing;
+                if(wasPlaying || sceneSelector(x,y) || xyMapSelector(x,y) || soundSelector(x,y) || factoryAction(x,y)!=FactoryAction::None) loop_.stop();
+                if(x>=148 && x<172 && y>=0 && y<24) {
+                    consumed_=true;
+                    if(!wasPlaying && !surface_.control().mute) loop_.toggle();
+                }
             }
         }
         down_=down;
         if(consumed_) {
             surface_.sample(false,0,0,now);
-            if(!down) consumed_=false;
+            if(transport_ && down) transportLast_=now;
+            if(!down) {
+                if(transport_) loop_.restartAfterRest(now);
+                consumed_=transport_=false;
+            }
             return;
         }
         surface_.sample(down,x,y,now);
@@ -44,7 +58,9 @@ public:
     Control effective(uint32_t now) noexcept {
         auto c=surface_.control();
         if(c.mute || down_ || loop_.state()!=GestureLoop::State::Playing) return c;
-        const auto p=loop_.play(now);
+        const bool smoothX=surface_.scale()==Scale::Free && surface_.mapping()!=XYMap::Lattice;
+        const bool smoothY=surface_.mapping()!=XYMap::Rhythm;
+        const auto p=loop_.play(now,smoothX,smoothY);
         c.x=p.x; c.y=p.y; c.gate=p.gate;
         return c;
     }
