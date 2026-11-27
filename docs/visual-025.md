@@ -1,0 +1,13 @@
+# VISUAL-025 — audio-aware adaptive visual budget (Refs #3)
+
+Draft/HOLD. Exact prior visual 981ad0c74e7f6ac09cac8e214c02707cbfbbe06f, run 45917867041 SUCCESS; qualified audio d6fd9adb9c1c916afd82fdcd7784b408645dbb20, run 45922175247 SUCCESS. Import the four audio-owned score/workflow files unchanged. No DSP, audio interface, preset, pin, palette, frame pixel or recovery-layout changes.
+
+The previous 2x/4x adaptive shading reacted only to display frame and strip timings. Now the ESP32 UI task also reads the existing bounded timing-v1 mailbox once per completed frame. Any observed change in preparation-over-budget or failed-write lifetime counters selects step 4 for the next frame; existing display thresholds (>85 ms/frame or >5 ms/strip) also apply. Recovery to step 2 needs 60 consecutive frames below 55 ms and 3 ms with advancing valid audio attempts and no new pressure. Stale/missing snapshots reset recovery; no spinning, logging or audio task dependency. Counter inequality handles ordinary rollover. A first nonzero pressure snapshot conservatively lowers quality. Long start gaps are excluded because normal DMA pacing can cause them. Existing fault/mute handling is unchanged. One strip buffer; still 153600 LCD payload bytes/frame at both qualities. No measured underrun claim. The printed step is the next frame's quality, as before; serial format unchanged.
+
+Native regression, synthetic timing inputs only:
+    g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/visual_budget_test.cpp -o budget && ./budget
+    clang++ -std=c++17 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -Iinclude tests/visual_budget_test.cpp -o budget-san && ./budget-san
+
+Both PASS; 24 bytes native policy object, no dynamic allocation. Exact tested blob IDs 598e94f9492571ff0c871a6d5673a9fdd3a6932b and 6caf88668dc0fc5eb2b71635052b5a1539cb7184. Prior archived Diffusion native regression rerun: PASS, 691200 pixel comparisons and all three frame hashes unchanged. Device adapter not compiled locally; require exact-head integrated target CI. Existing visual workflow extended, no additional jobs. Original Diviner MIT notice and pin 82e06e11e5947e41e888716e7a68e99187410f2e unchanged; reviewed pinned HAL and license again, no upstream code imported.
+
+Physical gate: compare idle/continuous XY/visual-heavy switching with recorded raw serial logs and independent audible or external capture, using the existing audio telemetry review. Check actual cadence and preparation counters; no inference of DAC underruns from task timing. No physical operation or main merge authorized. Previous qualified artifacts: Windows 15163097768 and ESP32 15162933411. New device policy only in this candidate.

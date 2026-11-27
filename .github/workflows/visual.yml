@@ -6,6 +6,8 @@ on:
       - 'include/mhac_calibration.hpp'
       - 'tests/calibration_test.cpp'
       - 'include/mhac_visual.hpp'
+      - 'include/mhac_visual_budget.hpp'
+      - 'tests/visual_budget_test.cpp'
       - 'include/mhac_palette.hpp'
       - 'include/mhac_xy_map.hpp'
       - 'include/mhac_lattice.hpp'
@@ -67,6 +69,8 @@ jobs:
           set -euo pipefail
           mkdir -p receipts
           git rev-parse HEAD > receipts/source-sha.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/visual_budget_test.cpp -o /tmp/visual_budget_test
+          /tmp/visual_budget_test | tee receipts/visual-budget-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/palette_test.cpp -o /tmp/palette_test
           /tmp/palette_test | tee receipts/palette-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/xy_map_test.cpp -o /tmp/xy_map_test

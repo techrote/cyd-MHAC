@@ -64,3 +64,7 @@ Ninth session sound: Counterquotation. From Phase Morph tap the bottom-left
  X remains pitch and Y historical blend. The recalled gesture alternates
  octave below and fifth above; wait at least 500 ms of active synthesis.
  The factory bank remains 16 entries; this variant is session-only.
+
+Twelfth visual engine: Diffusion. From Resonance tap top-left eleven times.
+Hold and drag to seed the reaction-diffusion field; aggregate PCM peak
+modulates its evolution. This is generative art, not acoustic telemetry.

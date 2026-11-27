@@ -6,6 +6,7 @@
 #include "mhac_platform.hpp"
 #include "mhac_visual_audio.hpp"
 #include "mhac_performance.hpp"
+#include "mhac_visual_budget.hpp"
 namespace {
 using namespace mhac::visual;
 static_assert(mhac::feature_version==1 && mhac::rate==24000 && mhac::feature_window==128,"feature contract pin required");
@@ -28,7 +29,8 @@ using CalState=CalibrationWizard::State;
 CalState calFrame=CalState::Idle;
 unsigned calIndex=0; bool calReady=false, bootHeld=false, bootHandled=false, suppressTouch=false;
 uint32_t bootStart=0, calStatusStart=0;
-bool ready=false, fault=false; int row=0; unsigned quality=2, fastFrames=0;
+bool ready=false, fault=false; int row=0; VisualBudget budget;
+static_assert(mhac::timing_version==1,"timing contract pin required");
 uint32_t lastPoll=0, frameStart=0, frameUs=0, maxStripUs=0, frames=0;
 void publish() { publishControl(mhac::exchange,ui.control()); }
 void renderCalibrationStrip(int top) {
@@ -109,19 +111,19 @@ void mhac_ui_tick() {
         if(frame.mode==5) ink.advance(now,frame.control.x,frame.control.y,frame.control.gate&&!frame.control.mute,frame.analysis&4095u);
     }
     const uint32_t start=micros();
-    if(calFrame==CalState::Idle) renderStrip(frame,row,quality,pixels);
+    if(calFrame==CalState::Idle) renderStrip(frame,row,budget.step(),pixels);
     else renderCalibrationStrip(row);
     lcd.pushImage(0,row,width,strip,pixels);
     maxStripUs=std::max(maxStripUs,uint32_t(micros()-start));
     row+=strip;
     if(row==height) {
         row=0; frameUs=micros()-frameStart; ++frames;
-        if(frameUs>85000 || maxStripUs>5000) { quality=4; fastFrames=0; }
-        else if(quality==4 && frameUs<55000 && maxStripUs<3000) { if(++fastFrames>=60) { quality=2;fastFrames=0; } }
-        else fastFrames=0;
+        mhac::AudioTiming timing{};
+        const bool timingValid=mhac::audio_timing.read(timing);
+        budget.finish(frameUs,maxStripUs,timingValid,timing.attempts,timing.prepare_over_budget,timing.failed_writes);
         // Low-rate telemetry only while silent and when the UART has space.
         if(frames%120==0 && !active.gate && Serial.availableForWrite()>=120)
-            Serial.printf("visual frame_us=%lu strip_us=%lu step=%u blocks=%lu errors=%lu watchdog=%lu\n",(unsigned long)frameUs,(unsigned long)maxStripUs,quality,(unsigned long)mhac::audio_blocks.load(),(unsigned long)mhac::audio_errors.load(),(unsigned long)mhac::exchange.watchdog_trips.load());
+            Serial.printf("visual frame_us=%lu strip_us=%lu step=%u blocks=%lu errors=%lu watchdog=%lu\n",(unsigned long)frameUs,(unsigned long)maxStripUs,budget.step(),(unsigned long)mhac::audio_blocks.load(),(unsigned long)mhac::audio_errors.load(),(unsigned long)mhac::exchange.watchdog_trips.load());
         if(frames%120==60 && !active.gate && Serial.availableForWrite()>=120) {
             mhac::AudioTiming t{};
             if(mhac::audio_timing.read(t)) Serial.printf("audio prep_us=%lu render_us=%lu over=%lu failed=%lu\n",(unsigned long)t.max_prepare_us,(unsigned long)t.max_render_us,(unsigned long)t.prepare_over_budget,(unsigned long)t.failed_writes);
