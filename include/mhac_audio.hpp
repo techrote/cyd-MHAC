@@ -87,6 +87,29 @@ class Engine {
         const float y=4.f*t*(1.f-std::fabs(t));
         return y + .225f*(y*std::fabs(y)-y);
     }
+    uint32_t advance_phases() noexcept {
+        const auto step=uint32_t(hz_*(4294967296.0f/rate));
+        phase_+=step; mod_+=step*2u;
+        // Advance detuned phases even when inactive; never reset on selection.
+        const auto detune=uint32_t(float(step)*(.004f+.024f*morph_));
+        swarm_lo_+=step-detune; swarm_hi_+=step+detune;
+        return step;
+    }
+    void advance_motif() noexcept {
+        // Free-running 2 Hz motif clock; no dependency on control or render block cadence.
+        if(++motif_phase_==motif_period) motif_phase_=0;
+        if(weights_[4]) {
+            // Uneven four-onset motif; Y continuously erases the second onset.
+            const unsigned t=motif_phase_;
+            float g=0.f;
+            if(t<1100u) g=1.f;
+            else if(t>=2832u && t<3932u) g=1.f-morph_;
+            else if(t>=7416u && t<8516u) g=.8f;
+            else if(t>=10248u && t<11348u) g=.65f*(1.f-.5f*morph_);
+            rhythm_gain_+=(g-rhythm_gain_)*(g>rhythm_gain_?.015f:.003f);
+            if(rhythm_gain_<.00001f) rhythm_gain_=0.f;
+        } else rhythm_gain_=0.f;
+    }
 public:
     void render(Exchange& io, int16_t* out, unsigned n) noexcept {
         // One bounded attempt; a writer paused mid-publication never blocks audio.
@@ -115,17 +138,25 @@ public:
         const unsigned remaining=control_lease_samples-age_;
         const unsigned active_samples=requested && !expired_?std::min(n,remaining):0u;
         unsigned peak=0;
-        for(unsigned i=0;i<n;++i) {
+        // Stable silent non-modal blocks need no waveform or mixer work.
+        // Continue the exact clocks, smoothing and feature publication; do
+        // not enter while a patch transition or independent modal tail exists.
+        if(n && !active_samples && env_==0.f && weights_[patch]==256u && patch!=modal_patch_index) {
+            echo_pos_=0; echo_valid_=0;
+            if(modal_used_) { modal_.reset(); modal_used_=false; }
+            if(quotation_used_) { quotation_.reset(); quotation_used_=false; }
+            for(unsigned i=0;i<n;++i) {
+                hz_+=(target-hz_)*.005f; morph_+=(y-morph_)*.005f;
+                advance_phases(); advance_motif();
+                out[i]=0; features_.push(0,io.features);
+            }
+        } else for(unsigned i=0;i<n;++i) {
             const bool active=i<active_samples;
             hz_+=(target-hz_)*.005f; morph_+=(y-morph_)*.005f;
             // Faster but still smoothed release on an expired gate; ordinary release unchanged.
             env_+=((active?1.f:0.f)-env_)*(active?.008f:(requested?.008f:.002f));
             if(!active && env_<.0001f) env_=0.f;
-            const auto step=uint32_t(hz_*(4294967296.0f/rate));
-            phase_+=step; mod_+=step*2u;
-            // Advance detuned phases even when inactive; never reset on selection.
-            const auto detune=uint32_t(float(step)*(.004f+.024f*morph_));
-            swarm_lo_+=step-detune; swarm_hi_+=step+detune;
+            const auto step=advance_phases();
             if(weights_[patch]<256u) {
                 for(unsigned j=0;j<mix_patch_count;++j) if(j!=patch && weights_[j]) {
                     --weights_[j]; ++weights_[patch]; break;
@@ -142,21 +173,9 @@ public:
                 const float b=sine(phase_+uint32_t(offset));
                 original=a+(b-a)*morph_;
             }
-            // Free-running 2 Hz motif clock; no dependency on control or render block cadence.
-            if(++motif_phase_==motif_period) motif_phase_=0;
-            float rhythm=0.f, wet=0.f;
-            if(weights_[4]) {
-                // Uneven four-onset motif; Y continuously erases the second onset.
-                const unsigned t=motif_phase_;
-                float g=0.f;
-                if(t<1100u) g=1.f;
-                else if(t>=2832u && t<3932u) g=1.f-morph_;
-                else if(t>=7416u && t<8516u) g=.8f;
-                else if(t>=10248u && t<11348u) g=.65f*(1.f-.5f*morph_);
-                rhythm_gain_+=(g-rhythm_gain_)*(g>rhythm_gain_?.015f:.003f);
-                if(rhythm_gain_<.00001f) rhythm_gain_=0.f;
-                rhythm=original*rhythm_gain_;
-            } else rhythm_gain_=0.f;
+            advance_motif();
+            const float rhythm=original*rhythm_gain_;
+            float wet=0.f;
             if(weights_[5] && env_>0.f) {
                 // Fixed 64 ms delay, bounded feedback and lazy invalidation (no bulk clear).
                 const float delayed=echo_valid_==echo_samples?float(echo_[echo_pos_])*(1.f/32768.f):0.f;
