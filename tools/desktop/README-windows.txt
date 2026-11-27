@@ -83,9 +83,11 @@ Factory audition remains a separate sound-only function.
 6 Dust Prism — Ring Dialect / Caustic / swapped XY.
 These are session recipes; nothing new is stored in flash.
 
-Gesture transport: five small blue/grey bars just right of top-center
+Gesture transport: six small blue/grey bars just right of top-center
 (x176–199, y0–23). Tap to cycle Original (stepped 1x), Glide (1x),
-Half glide (0.5x), Reverse (stepped 1x backward), Double (stepped 2x).
+Half glide (0.5x), Reverse (stepped 1x backward), Double (stepped 2x),
+Pendulum (glide forward then backward, with no gate break at turnaround).
+Pendulum has a maximum 7.998 s active phrase before the usual 100 ms rest.
 Record with the original top-center control; release to replay.
 Changing style during playback preserves the recording, releases its gate
 during the contact, and starts the new style after a 100 ms gate-off rest.

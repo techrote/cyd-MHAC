@@ -6,8 +6,8 @@ namespace mhac::visual {
 class GestureLoop {
 public:
     enum class State : uint8_t { Idle, Armed, Recording, Playing };
-    enum class Style : uint8_t { Original, Glide, Half, Reverse, Double };
-    static constexpr unsigned style_count=5;
+    enum class Style : uint8_t { Original, Glide, Half, Reverse, Double, Pendulum };
+    static constexpr unsigned style_count=6;
     struct Point { uint16_t x=0,y=0; bool gate=false; };
     static constexpr uint32_t limit_ms=4000, interval_ms=16, rest_ms=100;
 private:
@@ -16,6 +16,7 @@ private:
     State state_=State::Idle;
     Style style_=Style::Original;
     uint32_t activeWall() const noexcept {
+        if(style_==Style::Pendulum) return uint32_t(duration_)*2u-2u;
         return style_==Style::Half?uint32_t(duration_)*2u:style_==Style::Double?(uint32_t(duration_)+1u)/2u:duration_;
     }
     static uint16_t lerp(uint16_t a,uint16_t b,uint32_t n,uint32_t d) noexcept {
@@ -54,14 +55,15 @@ public:
         const uint32_t active=activeWall(), period=active+rest_ms;
         const uint32_t elapsed=now-origin_, phase=elapsed%period;
         origin_+=elapsed-phase; // rebase each cycle, including millisecond wrap
-        const bool reverse=style_==Style::Reverse;
-        if(phase>=active) { const auto& p=points_[reverse?0:count_-1]; return {p.x,p.y,false}; }
+        const bool reverse=style_==Style::Reverse, pendulum=style_==Style::Pendulum;
+        if(phase>=active) { const auto& p=points_[(reverse || pendulum)?0:count_-1]; return {p.x,p.y,false}; }
         uint32_t t=style_==Style::Half?phase/2u:style_==Style::Double?phase*2u:phase;
         if(reverse) t=uint32_t(duration_)-1u-t;
+        if(pendulum && t>=duration_) t=active-t;
         unsigned lo=0,hi=count_;
         while(lo+1<hi) { const unsigned mid=(lo+hi)/2; if(points_[mid].t<=t) lo=mid; else hi=mid; }
         const auto& a=points_[lo];
-        if((style_==Style::Glide || style_==Style::Half) && lo+1<count_) {
+        if((style_==Style::Glide || style_==Style::Half || pendulum) && lo+1<count_) {
             const auto& b=points_[lo+1];
             const uint32_t n=t-a.t,d=b.t-a.t;
             return {smoothX?lerp(a.x,b.x,n,d):a.x,smoothY?lerp(a.y,b.y,n,d):a.y,true};
@@ -75,6 +77,7 @@ constexpr const char* loopStyleName(GestureLoop::Style s) noexcept {
     case GestureLoop::Style::Half: return "Half glide";
     case GestureLoop::Style::Reverse: return "Reverse";
     case GestureLoop::Style::Double: return "Double";
+    case GestureLoop::Style::Pendulum: return "Pendulum";
     default: return "Original";
     }
 }

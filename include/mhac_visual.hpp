@@ -246,8 +246,8 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
         default: return rgb(65,80,94);
         }
     }
-    // Five aligned transport bars; original/step, glide, half, reverse, double.
-    if(x>=176 && x<196 && y>=8 && y<16) {
+    // Six aligned transport bars; original/step, glide, half, reverse, double, pendulum.
+    if(x>=176 && x<200 && y>=8 && y<16) {
         const unsigned i=unsigned(x-176)/4;
         return i==unsigned(f.loop_style)?rgb(160,202,236):rgb(65,80,94);
     }

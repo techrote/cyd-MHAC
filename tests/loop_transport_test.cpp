@@ -10,22 +10,37 @@ static unsigned core() {
         L l; for(unsigned i=0;i<style;++i) l.nextStyle();
         l.toggle(); l.observe({0,4095,true},start); l.observe({1600,2495,true},start+16);
         l.observe({3200,895,true},start+32); l.observe({},start+49);
-        const unsigned active=style==2?98:style==4?25:49;
+        const unsigned active=style==2?98:style==4?25:style==5?96:49;
         for(unsigned cycle=0;cycle<3;++cycle) for(unsigned p=0;p<active+100;++p) {
             const uint32_t now=start+49+cycle*(active+100)+p;
             const auto v=l.play(now), q=l.play(now,false,false);
             assert(v.gate==(p<active) && q.gate==v.gate);
             if(v.gate) {
-                unsigned t=style==2?p/2:style==4?p*2:style==3?48-p:p;
+                unsigned t=style==2?p/2:style==4?p*2:style==3?48-p:style==5 && p>=49?96-p:p;
                 unsigned held=std::min(t/16,2u)*1600;
-                unsigned x=(style==1||style==2)?std::min(t*100,3200u):held;
+                unsigned x=(style==1||style==2||style==5)?std::min(t*100,3200u):held;
                 assert(v.x==x && v.y==4095-x && q.x==held && q.y==4095-held);
             }
+            if(style==5 && !v.gate) assert(v.x==0 && v.y==4095);
             ++checks;
         }
         l.nextStyle(); l.restartAfterRest(start+1000);
         assert(!l.play(start+1000).gate && !l.play(start+1099).gate && l.play(start+1100).gate);
         l.stop(); assert(!l.play(start+1101).gate);
+    }
+    // Full recording capacity, irregular sampling and maximum-duration turnaround.
+    for(uint32_t start:{0u,0xfffff800u}) {
+        L l; for(unsigned i=0;i<5;++i) l.nextStyle();
+        l.toggle(); l.observe({0,4095,true},start);
+        for(unsigned t=16;t<=4000;t+=16) l.observe({uint16_t(t),uint16_t(4095-t),true},start+t);
+        l.observe({4095,0,true},start+4500); l.observe({},start+5000);
+        assert(l.count()==251 && l.duration()==4000);
+        for(unsigned p=0;p<8098;++p) {
+            auto v=l.play(start+5000+p);
+            const unsigned t=p<4000?p:p<7998?7998-p:0;
+            assert(v.gate==(p<7998) && v.x==t && v.y==4095-t);
+            ++checks;
+        }
     }
     return checks;
 }
@@ -82,5 +97,5 @@ int main() {
         ++hit; assert(!(x>=148 && x<172) && !sceneSelector(x,y) && !soundSelector(x,y) && !xyMapSelector(x,y) && !paletteSelector(x,y) && factoryAction(x,y)==FactoryAction::None);
     }
     assert(hit==576); const auto checks=core(),notes=surface(); assert(notes);
-    std::printf("loop transport PASS: %u phase checks, %u active PCM samples, %u selector pixels, 225 indicator checks, sizeof loop=%zu surface=%zu\n",checks,notes,hit,sizeof(L),sizeof(PerformanceSurface));
+    std::printf("loop transport PASS: %u phase checks, %u active PCM samples, %u selector pixels, 324 indicator checks, sizeof loop=%zu surface=%zu\n",checks,notes,hit,sizeof(L),sizeof(PerformanceSurface));
 }
