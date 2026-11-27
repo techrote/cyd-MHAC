@@ -84,6 +84,8 @@ jobs:
           /tmp/idle_cost_test | tee receipts/idle-cost-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/echo_taps_test.cpp -o /tmp/echo_taps_test
           /tmp/echo_taps_test | tee receipts/echo-taps-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/erasure_relocation_test.cpp -o /tmp/erasure_relocation_test
+          /tmp/erasure_relocation_test | tee receipts/erasure-relocation-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/catalogue_stress.cpp -o /tmp/catalogue_stress
           /tmp/catalogue_stress | tee receipts/catalogue-stress.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/score_render.cpp -o /tmp/score_render

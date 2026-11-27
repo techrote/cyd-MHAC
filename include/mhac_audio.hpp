@@ -112,6 +112,8 @@ class Engine {
             float g=0.f;
             if(t<1100u) g=1.f;
             else if(t>=2832u && t<3932u) g=1.f-morph_;
+            // At high Y, the erased onset leaves a quieter displaced fragment.
+            else if(t>=5100u && t<5650u) g=.45f*morph_;
             else if(t>=7416u && t<8516u) g=.8f;
             else if(t>=10248u && t<11348u) g=.65f*(1.f-.5f*morph_);
             rhythm_gain_+=(g-rhythm_gain_)*(g>rhythm_gain_?.015f:.003f);

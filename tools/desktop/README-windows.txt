@@ -32,9 +32,10 @@ mappings retain their normal scale behavior; factory audition bypasses mapping.
 Fifth XY mapping: Rhythm bands. Tap the mapping selector four times from Direct.
 Choose Erasure Pulse (Four Marks / Missing Mark) for the rhythmic interpretation.
 X controls pitch with the existing scale; the four Y bands select stable timbre
-levels 0, 1/3, 2/3, full. The second motif onset fades as you move upward.
-Four tiny marks on the left of each band show nominal onset gains, not a live
-beat meter. Other patches use the same bands as stepped timbre. The audio
+levels 0, 1/3, 2/3, full. The second motif onset fades as you move upward,
+while a shorter, delayed amber fragment grows. Five positions on the left
+of each band show nominal onset gains, not a live beat meter; silent marks
+are dark. Other patches use the same bands as stepped timbre. The audio
 motif clock runs independently. Factory audition still bypasses mapping.
 
 Ninth visual engine: Caustic. From the initial Resonance visual, tap top-left

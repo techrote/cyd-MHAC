@@ -20,6 +20,8 @@ on:
       - 'tests/visual_budget_test.cpp'
       - 'include/mhac_palette.hpp'
       - 'include/mhac_xy_map.hpp'
+      - 'include/mhac_rhythm_legend.hpp'
+      - 'tests/rhythm_legend_test.cpp'
       - 'include/mhac_lattice.hpp'
       - 'tests/lattice_test.cpp'
       - 'tests/xy_map_test.cpp'
@@ -96,6 +98,8 @@ jobs:
           /tmp/palette_test | tee receipts/palette-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/xy_map_test.cpp -o /tmp/xy_map_test
           /tmp/xy_map_test | tee receipts/xy-map-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/rhythm_legend_test.cpp -o /tmp/rhythm_legend_test
+          /tmp/rhythm_legend_test | tee receipts/rhythm-legend-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/lattice_test.cpp -o /tmp/lattice_test
           /tmp/lattice_test | tee receipts/lattice-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/calibration_test.cpp -o /tmp/calibration_test

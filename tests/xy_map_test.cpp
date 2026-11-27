@@ -49,8 +49,13 @@ static void rhythmIntegration(const char* prefix) {
             std::array<uint16_t,width*strip+2> p{}; p.front()=0x1234; p.back()=0x5678;
             renderStrip(f,224,q,p.data()+1); assert(p[1+288]==rgb(180,162,240));
             renderStrip(f,24,q,p.data()+1); assert(p[1+4*width+8]==rgb(18+255/2,18+255*3/4,18+255));
-            renderStrip(f,204,q,p.data()+1); assert(p[1+4*width+20]==rgb(18+255/2,18+255*3/4,18+255));
-            renderStrip(f,24,q,p.data()+1); assert(p[1+4*width+20]==rgb(18,18,18));
+            renderStrip(f,204,q,p.data()+1);
+            assert(p[1+4*width+16]==rgb(18+255/2,18+255*3/4,255));
+            assert(p[1+4*width+24]==rgb(12,20,28));
+            renderStrip(f,24,q,p.data()+1);
+            assert(p[1+4*width+16]==rgb(12,20,28));
+            assert(p[1+4*width+24]==rgb(133,98,36)); // full-Y amber ghost
+            assert(p[1+4*width+28]==rgb(12,20,28));
             assert(p.front()==0x1234 && p.back()==0x5678);
         }
         if(prefix) {

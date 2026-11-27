@@ -5,6 +5,7 @@
 #include "mhac_calibration.hpp"
 #include "mhac_palette.hpp"
 #include "mhac_xy_map.hpp"
+#include "mhac_rhythm_legend.hpp"
 #include "mhac_lattice.hpp"
 #include "mhac_ink.hpp"
 #include "mhac_cellular.hpp"
@@ -218,12 +219,9 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
         const unsigned band=rhythmBand(y);
         if(y%60<4) { r=(r+90)/2; g=(g+160)/2; b=(b+190)/2; }
         if(x>=8 && x<52 && y%60>=28 && y%60<36 && f.control.patch==unsigned(mhac::Patch::ErasurePulse)) {
-            const unsigned onset=unsigned(x-8)/12u;
-            if((x-8)%12<8) {
-                // Nominal gain at each onset, drawn as brightness, not PCM.
-                const unsigned gain=onset==0?255u:onset==1?255u-band*85u:onset==2?204u:166u-band*27u;
-                r=int(gain/2u)+18; g=int(gain*3u/4u)+18; b=int(gain)+18;
-            }
+            // Static five-mark motif including the displaced amber fragment.
+            const auto mark=rhythmLegend(x,band);
+            r=mark.r; g=mark.g; b=mark.b;
         }
     }
     const int d2=dx*dx+dy*dy;
