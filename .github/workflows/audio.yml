@@ -78,6 +78,8 @@ jobs:
           /tmp/quotation_study | tee receipts/quotation-study.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/counter_colour_test.cpp -o /tmp/counter_colour_test
           /tmp/counter_colour_test | tee receipts/counter-colour-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/coupling_test.cpp -o /tmp/coupling_test
+          /tmp/coupling_test | tee receipts/coupling-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/idle_cost_test.cpp -o /tmp/idle_cost_test
           /tmp/idle_cost_test | tee receipts/idle-cost-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/echo_taps_test.cpp -o /tmp/echo_taps_test

@@ -8,7 +8,7 @@ class Quotation {
     Mark marks_[4]{}, target_{};
     unsigned cursor_=0, filled_=0, until_=0;
     uint32_t phase_=0, step_=0;
-    float timbre_=0.f, blend_=0.f;
+    float timbre_=0.f, blend_=0.f, coupling_=0.f;
 public:
     static constexpr unsigned interval=3000, history_samples=4*interval;
     void reset() noexcept { *this=Quotation{}; }
@@ -57,8 +57,21 @@ public:
         step_=uint32_t(int32_t(step_)+difference/64);
         timbre_+=(target_.timbre-timbre_)*.005f;
         phase_+=step_;
+        // A recalled upper answer temporarily couples its second harmonic to
+        // the live carrier. Triangular depth after the breath; smoothing also
+        // handles release, inhibit and switching back to ordinary quotation.
+        const unsigned elapsed=interval-until_;
+        float depth=0.f;
+        if(counter && ready && capture && !inhibit && !(cursor_&1u) &&
+           elapsed>900u && elapsed<2700u) {
+            const unsigned rise=elapsed-900u, fall=2700u-elapsed;
+            depth=float(rise<fall?rise:fall)*(1.f/900.f)*y;
+        }
+        coupling_+=(depth-coupling_)*.005f;
+        if(coupling_<.00001f) coupling_=0.f;
         if(blend_==0.f) return carrier;
-        const float q=sine(phase_)*(1.f-.35f*timbre_)+sine(phase_*2u)*(.35f*timbre_);
+        const int32_t offset=int32_t(coupling_*carrier*536870912.f);
+        const float q=sine(phase_)*(1.f-.35f*timbre_)+sine(phase_*2u+uint32_t(offset))*(.35f*timbre_);
         return carrier+(q-carrier)*blend_;
     }
 private:
