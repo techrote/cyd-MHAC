@@ -5,7 +5,7 @@ namespace mhac::visual {
 class PerformanceSurface {
     Surface surface_;
     GestureLoop loop_;
-    bool down_=false, consumed_=false, transport_=false;
+    bool down_=false, consumed_=false, transport_=false, visualOnly_=false;
     uint32_t transportLast_=0;
     void cancelIfMuted() noexcept { if(surface_.control().mute) loop_.stop(); }
 public:
@@ -34,7 +34,9 @@ public:
                 consumed_=transport_=true; transportLast_=now; loop_.nextStyle();
             } else {
                 const bool wasPlaying=loop_.state()==GestureLoop::State::Playing;
-                if(wasPlaying || sceneSelector(x,y) || xyMapSelector(x,y) || soundSelector(x,y) || factoryAction(x,y)!=FactoryAction::None) loop_.stop();
+                // Decorative selectors preserve the recorded audio coordinates and phase.
+                visualOnly_=wasPlaying && ((x>=0 && x<24 && y>=0 && y<24) || paletteSelector(x,y));
+                if((wasPlaying && !visualOnly_) || sceneSelector(x,y) || xyMapSelector(x,y) || soundSelector(x,y) || factoryAction(x,y)!=FactoryAction::None) loop_.stop();
                 if(x>=148 && x<172 && y>=0 && y<24) {
                     consumed_=true;
                     if(!wasPlaying && !surface_.control().mute) loop_.toggle();
@@ -52,13 +54,14 @@ public:
             return;
         }
         surface_.sample(down,x,y,now);
+        if(!down) visualOnly_=false;
         cancelIfMuted();
         const auto c=surface_.control();
         loop_.observe({uint16_t(c.x),uint16_t(c.y),c.gate},now);
     }
     Control effective(uint32_t now) noexcept {
         auto c=surface_.control();
-        if(c.mute || down_ || loop_.state()!=GestureLoop::State::Playing) return c;
+        if(c.mute || (down_ && !visualOnly_) || loop_.state()!=GestureLoop::State::Playing) return c;
         const bool smoothX=surface_.scale()==Scale::Free && surface_.mapping()!=XYMap::Lattice;
         const bool smoothY=surface_.mapping()!=XYMap::Rhythm;
         const auto p=loop_.play(now,smoothX,smoothY);

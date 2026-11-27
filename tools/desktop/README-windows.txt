@@ -9,7 +9,8 @@ Tap to cycle; release before playing. Trace retains its feature colours.
 Bottom mapping strip (x256–295 of 320): Direct, Swapped, Fine relative, Note lattice, Rhythm bands.
 Fine relative starts at last sound coordinates; drag at half sensitivity, lift and re-anchor.
 Mapping changes cancel quotation; the ring shows sound coordinates, not the finger in swapped/relative modes.
-A new touch still interrupts gesture quotation as elsewhere on the surface.
+A new performance touch interrupts gesture quotation. During playback the top-left
+visual and bottom palette selectors can change the look without interrupting audio.
 Last four factory sounds: Stone Bell, Hollow Gong, Copper Rain, Glass Pins.
 Select does not strike; hold audition to sound after explicit unmute.
 Top-center gesture quotation; Esc mutes and cancels; Q quits.
@@ -92,6 +93,7 @@ Record with the original top-center control; release to replay.
 Changing style during playback preserves the recording, releases its gate
 during the contact, and starts the new style after a 100 ms gate-off rest.
 Audio release tails may continue during a rest. Pitch grids and rhythm
-bands remain stepped even in glide styles. Other fresh touches interrupt
+bands remain stepped even in glide styles. Top-left visual and bottom palette
+selectors preserve playback phase, gate and sound; other fresh touches interrupt
 playback. Mute, watchdog or stale selector contact cancel the loop.
 The current style appears in the desktop title. Session-only, not saved.

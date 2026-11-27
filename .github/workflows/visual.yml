@@ -32,6 +32,7 @@ on:
       - 'tests/gesture_test.cpp'
       - 'tests/loop_transport_test.cpp'
       - 'tests/loop_preview_test.cpp'
+      - 'tests/loop_visual_live_test.cpp'
       - 'tests/performance_test.cpp'
       - 'include/mhac_trace.hpp'
       - 'include/mhac_features.hpp'
@@ -97,6 +98,8 @@ jobs:
           /tmp/loop_transport_test | tee receipts/loop-transport-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/loop_preview_test.cpp -o /tmp/loop_preview_test
           /tmp/loop_preview_test | tee receipts/loop-preview-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/loop_visual_live_test.cpp -o /tmp/loop_visual_live_test
+          /tmp/loop_visual_live_test | tee receipts/loop-visual-live-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/fault_screen_test.cpp -o /tmp/fault_screen_test
           /tmp/fault_screen_test | tee receipts/fault-screen-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/performance_test.cpp -o /tmp/performance_test
