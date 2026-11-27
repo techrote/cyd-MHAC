@@ -6,6 +6,7 @@
 #include "mhac_features.hpp"
 #include "mhac_modal.hpp"
 #include "mhac_quotation.hpp"
+#include "mhac_formant.hpp"
 namespace mhac {
 constexpr unsigned rate = 24000, block = 128, contract_version = 1;
 // Optional patch extension v1. Existing four-argument publishers retain phase morph.
@@ -23,6 +24,11 @@ constexpr uint32_t quotation_opt_in=1u<<30;
 // v5 is a session-only variant of the v4 wire ID, not another mixer weight.
 constexpr unsigned counterquotation_extension_version=5, counterquotation_session_index=8;
 constexpr uint32_t counterquotation_opt_in=1u<<31;
+// v6 session-only Formant Reed: exact three-flag opt-in on legacy ID 1.
+// Older engines interpret this as Harmonic Lattice. Persisted IDs unchanged.
+constexpr unsigned formant_extension_version=6, formant_session_index=9;
+constexpr unsigned formant_mix_index=mix_patch_count, engine_mix_count=mix_patch_count+1;
+constexpr uint32_t formant_opt_in=modal_opt_in|quotation_opt_in|counterquotation_opt_in;
 constexpr unsigned motif_period = rate / 2, echo_samples = 1536;
 // Early reflection reuses the existing 64 ms delay ring (24 ms tap).
 constexpr unsigned echo_early_samples = 576;
@@ -56,6 +62,9 @@ struct Exchange {
     void publish_counterquotation(unsigned x,unsigned y,bool gate,bool mute) noexcept {
         publish_word(x,y,gate,mute,quotation_patch_index,quotation_opt_in|counterquotation_opt_in);
     }
+    void publish_formant(unsigned x,unsigned y,bool gate,bool mute) noexcept {
+        publish_word(x,y,gate,mute,1u,formant_opt_in);
+    }
 private:
     void publish_word(unsigned x,unsigned y,bool gate,bool mute,unsigned id,uint32_t extension) noexcept {
         // Odd sequence marks an in-progress write; even commits a complete publication.
@@ -80,7 +89,7 @@ class Engine {
     float pitch_target_=110.f;
     uint32_t swarm_lo_=0, swarm_hi_=0;
     // Integer simplex: exactly 256 total, up to 256 samples per full transition.
-    unsigned weights_[mix_patch_count]={256,0,0,0,0,0,0,0};
+    unsigned weights_[engine_mix_count]={256,0,0,0,0,0,0,0,0};
     Quotation quotation_;
     bool quotation_used_=false;
     ModalChime modal_;
@@ -131,9 +140,10 @@ public:
         }
         const auto c=accepted_control_;
         const unsigned id=(c>>26)&7u;
-        const unsigned patch=id<extended_patch_count?id:
+        const unsigned patch=id==1u && (c&formant_opt_in)==formant_opt_in?formant_mix_index:
+            (id<extended_patch_count?id:
             (id==modal_patch_index && (c&modal_opt_in)?modal_patch_index:
-            (id==quotation_patch_index && (c&quotation_opt_in) && !(c&modal_opt_in)?quotation_patch_index:0u));
+            (id==quotation_patch_index && (c&quotation_opt_in) && !(c&modal_opt_in)?quotation_patch_index:0u)));
         const bool counter=patch==quotation_patch_index && (c&counterquotation_opt_in);
         const unsigned pitch_code=c&4095u;
         if(pitch_code!=pitch_code_) {
@@ -168,7 +178,7 @@ public:
             if(!active && env_<.0001f) env_=0.f;
             const auto step=advance_phases();
             if(weights_[patch]<256u) {
-                for(unsigned j=0;j<mix_patch_count;++j) if(j!=patch && weights_[j]) {
+                for(unsigned j=0;j<engine_mix_count;++j) if(j!=patch && weights_[j]) {
                     --weights_[j]; ++weights_[patch]; break;
                 }
             }
@@ -229,6 +239,7 @@ public:
                 if(weights_[4]) sound+=float(weights_[4])*rhythm;
                 if(weights_[5]) sound+=float(weights_[5])*wet;
                 if(weights_[quotation_patch_index]) sound+=float(weights_[quotation_patch_index])*quote;
+                if(weights_[formant_mix_index]) sound+=float(weights_[formant_mix_index])*formant_reed(phase_,hz_,morph_,sine);
                 sound*=1.f/256.f;
             }
             // Preserve the exact legacy arithmetic when no modal contribution is mixed.
