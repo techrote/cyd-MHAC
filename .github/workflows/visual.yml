@@ -27,6 +27,8 @@ on:
       - 'tests/desktop_audio_test.cpp'
       - 'tools/desktop/**'
       - 'include/mhac_gesture.hpp'
+      - 'include/mhac_trajectory.hpp'
+      - 'tests/trajectory_test.cpp'
       - 'include/mhac_performance.hpp'
       - 'include/mhac_timing.hpp'
       - 'tests/gesture_test.cpp'
@@ -101,7 +103,9 @@ jobs:
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/loop_transport_test.cpp -o /tmp/loop_transport_test
           /tmp/loop_transport_test | tee receipts/loop-transport-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/loop_preview_test.cpp -o /tmp/loop_preview_test
-          /tmp/loop_preview_test | tee receipts/loop-preview-test.txt
+          /tmp/loop_preview_test receipts/trajectory.ppm | tee receipts/loop-preview-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/trajectory_test.cpp -o /tmp/trajectory_test
+          /tmp/trajectory_test | tee receipts/trajectory-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/loop_visual_live_test.cpp -o /tmp/loop_visual_live_test
           /tmp/loop_visual_live_test | tee receipts/loop-visual-live-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/overdub_test.cpp -o /tmp/overdub_test

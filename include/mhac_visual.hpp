@@ -12,6 +12,7 @@
 #include "mhac_scale.hpp"
 #include "mhac_trace.hpp"
 #include "mhac_gesture.hpp"
+#include "mhac_trajectory.hpp"
 #include "mhac_factory_ui.hpp"
 #include "mhac_visual_patch.hpp"
 #include "mhac_scene.hpp"
@@ -308,25 +309,44 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
     return rgb(r,g,b);
 }
 inline uint16_t pixel(const Frame& f,int x,int y) noexcept { return pixelAt(f,x,y,frameCursor(f)); }
-// Sparse recorded control-coordinate beads, not measured audio or raw touch.
-// Full-resolution post-pass: at most 16 five-pixel-square marks per frame.
+// Decimated recorded control-coordinate path, not measured audio or raw touch.
+// Full-resolution post-pass: at most 15 dashed links and 16 five-pixel beads.
 inline void drawLoopPreview(const Frame& f,int row,uint16_t* out) noexcept {
     if(f.control.mute || (f.loop_state!=GestureLoop::State::Recording && f.loop_state!=GestureLoop::State::Playing)) return;
     const auto live=frameCursor(f);
     const unsigned count=std::min<unsigned>(f.loop_preview.count,GestureLoop::preview_capacity);
-    for(unsigned i=0;i<count;++i) {
+    const auto coordinate=[&](unsigned i) {
         const auto p=f.loop_preview.points[i];
         const unsigned x=std::min<unsigned>(p.x,4095), y=std::min<unsigned>(p.y,4095);
-        const auto q=f.mapping==XYMap::Lattice?latticeCursor(x,y,f.scale):
+        return f.mapping==XYMap::Lattice?latticeCursor(x,y,f.scale):
             LatticeCursor{int(x*319/4095),f.mapping==XYMap::Rhythm?rhythmCenter(rhythmNearest(y)):239-int(y*239/4095)};
+    };
+    const auto safe=[&](int x,int y) {
+        if(x<24 || x>295 || y<24 || y>215) return false;
+        const int dx=x-live.x,dy=y-live.y;
+        return dx*dx+dy*dy>144 && !(f.mapping==XYMap::Rhythm && x<52 && y%60>=28 && y%60<36);
+    };
+    if(count>1) {
+        auto previous=coordinate(0);
+        for(unsigned i=1;i<count;++i) {
+            const auto q=coordinate(i);
+            const unsigned phase=(i-1)*255u/(count-1);
+            const auto link=rgb(160-int(phase)/3,100+int(phase)/3,65+int(phase)/2);
+            trajectorySegment(previous.x,previous.y,q.x,q.y,row,strip,[&](int x,int y) {
+                if(safe(x,y)) out[(y-row)*width+x]=link;
+            });
+            previous=q;
+        }
+    }
+    for(unsigned i=0;i<count;++i) {
+        const auto q=coordinate(i);
         if(q.y+2<row || q.y-2>=row+strip) continue;
         const unsigned phase=count>1?i*255u/(count-1):0u;
         const auto bead=rgb(255-int(phase)*3/5,160+int(phase)/3,64+int(phase)*3/4);
         for(int py=std::max({q.y-2,row,24});py<=std::min({q.y+2,row+strip-1,215});++py)
             for(int px=std::max(q.x-2,24);px<=std::min(q.x+2,295);++px) {
                 // Keep the live cursor and rhythm legends intact.
-                const int dx=px-live.x,dy=py-live.y;
-                if(dx*dx+dy*dy<=144 || (f.mapping==XYMap::Rhythm && px<52 && py%60>=28 && py%60<36)) continue;
+                if(!safe(px,py)) continue;
                 out[(py-row)*width+px]=(std::abs(px-q.x)==2 || std::abs(py-q.y)==2)?rgb(8,16,20):bead;
             }
     }

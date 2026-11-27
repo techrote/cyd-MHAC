@@ -118,3 +118,7 @@ y0–23). Reverses the order of recorded pitch values, preserving the original
 entry timestamps, timbre, transport and gate/rest timing. Tap again to restore
 the prior pitches if no intervening pitch edit occurred. This is a reversible
 transformation, not an undo history. It disarms both overdubs; playback continues.
+
+Gesture path: recording/playback beads are now linked by a dashed chronological
+control-coordinate path (up to 16 sampled marks). The path reflects pitch/timbre
+edits, not raw touch positions or measured DSP history. It is hidden when muted.

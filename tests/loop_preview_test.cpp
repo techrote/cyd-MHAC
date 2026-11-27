@@ -4,7 +4,7 @@
 #include <cstdio>
 using namespace mhac::visual;
 using L=GestureLoop;
-int main() {
+int main(int argc,char** argv) {
     static_assert(sizeof(L)==1516,"no new loop state");
     static_assert(sizeof(L::Preview)<=68,"bounded frame snapshot");
     unsigned checks=0,changed=0,notes=0;
@@ -55,6 +55,38 @@ int main() {
         f.control.mute=true; baseline.control.mute=true;
         for(int row=0;row<height;row+=strip) { renderStrip(f,row,1,a.data()); renderStrip(baseline,row,1,b.data()); assert(a==b); }
         ui.observeWatchdog(1); assert(ui.loopPreview().count==0 && ui.control().mute);
+    }
+    // Two recorded endpoints must now have a visible full-resolution link.
+    Frame fixture{}; fixture.control.mute=false; fixture.control.x=4095; fixture.control.y=4095;
+    fixture.loop_state=L::State::Playing; fixture.loop_preview.count=2;
+    fixture.loop_preview.points[0]={1024,2048}; fixture.loop_preview.points[1]={3072,2048};
+    std::array<uint16_t,width*strip> pixels{};
+    for(unsigned step:{1u,2u,4u}) {
+        renderStrip(fixture,120,step,pixels.data());
+        assert(pixels[157]==rgb(160,100,65));
+    }
+    if(argc==2) {
+        // Native RGB565 capture of a decimated control path over Resonance.
+        fixture.loop_preview.count=7;
+        fixture.loop_preview.points[0]={500,1100};
+        fixture.loop_preview.points[1]={950,2900};
+        fixture.loop_preview.points[2]={1500,1750};
+        fixture.loop_preview.points[3]={2150,3400};
+        fixture.loop_preview.points[4]={2750,1300};
+        fixture.loop_preview.points[5]={3300,2600};
+        fixture.loop_preview.points[6]={3600,1700};
+        fixture.control.x=3600; fixture.control.y=1700; fixture.control.gate=true;
+        auto* out=std::fopen(argv[1],"wb"); assert(out);
+        std::fprintf(out,"P6\n320 240\n255\n");
+        for(int row=0;row<height;row+=strip) {
+            renderStrip(fixture,row,2,pixels.data());
+            for(auto p:pixels) {
+                const unsigned char c[3]={static_cast<unsigned char>(((p>>11)&31)*255/31),
+                    static_cast<unsigned char>(((p>>5)&63)*255/63),static_cast<unsigned char>((p&31)*255/31)};
+                assert(std::fwrite(c,1,3,out)==3);
+            }
+        }
+        assert(std::fclose(out)==0);
     }
     assert(notes && changed); std::printf("loop preview PASS: %u bounded sample checks, %u changed RGB565 pixels, %u active PCM samples, preview=%zu loop=%zu\n",checks,changed,notes,sizeof(L::Preview),sizeof(L));
 }
