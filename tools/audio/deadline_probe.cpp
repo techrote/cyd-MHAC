@@ -11,13 +11,14 @@
 
 namespace {
 using Clock=std::chrono::steady_clock;
-constexpr unsigned blocks=4096, warmup=64, modes=9;
+constexpr unsigned blocks=4096, warmup=64, modes=10;
 constexpr double budget_ns=1e9*mhac::block/mhac::rate;
 struct Result { uint64_t hash=14695981039346656037ull; unsigned peak=0, trips=0; };
 void send(mhac::Exchange& io,unsigned mode,unsigned x,unsigned y,bool gate,bool mute) {
     if(mode==6) io.publish_modal(x,y,gate,mute);
     else if(mode==7) io.publish_quotation(x,y,gate,mute);
     else if(mode==8) io.publish_counterquotation(x,y,gate,mute);
+    else if(mode==9) io.publish_formant(x,y,gate,mute);
     else io.publish_patch(x,y,gate,mute,static_cast<mhac::Patch>(mode));
 }
 Result run(unsigned scenario,bool contention) {
