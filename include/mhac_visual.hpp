@@ -8,6 +8,7 @@
 #include "mhac_lattice.hpp"
 #include "mhac_ink.hpp"
 #include "mhac_cellular.hpp"
+#include "mhac_diffusion.hpp"
 #include "mhac_scale.hpp"
 #include "mhac_trace.hpp"
 #include "mhac_gesture.hpp"
@@ -111,6 +112,7 @@ struct Frame {
     Palette palette=Palette::Original;
     XYMap mapping=XYMap::Direct;
     const CellularField* cellular=nullptr;
+    const DiffusionField* diffusion=nullptr;
 };
 inline int tri(int v) noexcept { const unsigned u=unsigned(v)&255u; return int(u<128?u*2:(255-u)*2); }
 inline uint16_t rgb(int r,int g,int b) noexcept {
@@ -191,6 +193,9 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
         }
     } else if(f.mode==cellular_mode) { // Excitable cellular field.
         const auto s=f.cellular?f.cellular->shade(x,y):CellularField::Shade{5,9,16};
+        r=s.r;g=s.g;b=s.b;
+    } else if(f.mode==diffusion_mode) { // Diffusion: two-species generative medium.
+        const auto s=f.diffusion?f.diffusion->shade(x,y):DiffusionField::Shade{4,9,18};
         r=s.r;g=s.g;b=s.b;
     } else { // Trace: observed PCM feature history, not spectral bands.
         const auto s=f.trace?f.trace->shade(x,y):Trace::Shade{5,8,15};

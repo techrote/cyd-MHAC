@@ -33,6 +33,8 @@ on:
       - 'tests/scale_test.cpp'
       - 'tests/extended_test.cpp'
       - 'include/mhac_cellular.hpp'
+      - 'include/mhac_diffusion.hpp'
+      - 'tests/diffusion_study.cpp'
       - 'tests/cellular_study.cpp'
       - 'include/mhac_ink.hpp'
       - 'tests/ink_test.cpp'
@@ -93,6 +95,8 @@ jobs:
           /tmp/quotation_ui_test receipts/quotation- | tee receipts/quotation-ui-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/cellular_study.cpp -o /tmp/cellular_study
           /tmp/cellular_study receipts/cellular- | tee receipts/cellular-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/diffusion_study.cpp -o /tmp/diffusion_study
+          /tmp/diffusion_study receipts/diffusion- | tee receipts/diffusion-test.txt
           mkdir -p receipts/five-modes
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_002_test.cpp -o /tmp/visual_002_test
           /tmp/visual_002_test receipts/five-modes | tee receipts/host-visual-002.txt

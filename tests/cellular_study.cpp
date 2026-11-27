@@ -53,7 +53,7 @@ int main(int argc,char** argv) {
         f.control.mute=true;f.watchdog=true; for(unsigned q:{1u,2u,4u}){renderStrip(f,0,q,buf.data()+1);assert(buf[1+4*width+300]==rgb(255,184,32));}
         std::printf("frame %u hash %016llx occupied %u/1200\n",n,static_cast<unsigned long long>(h),lit);
     }
-    touch(false,0,0);tap(10,10);assert(ui.mode()==0);assert(active>0&&!io.watchdog_trips.load());
+    touch(false,0,0);tap(10,10);assert(ui.mode()==diffusion_mode);tap(10,10);assert(ui.mode()==0);assert(active>0&&!io.watchdog_trips.load());
     std::printf("cellular PASS: 691200 pixel comparisons, 3600 state comparisons, %u active PCM samples, %zu bytes\n",active,sizeof(CellularField));
     const auto start=std::chrono::steady_clock::now();unsigned sum=0;
     for(unsigned i=0;i<10000;++i){field.advance(i*50u,true,i%4096u,2048,true,2048);sum+=field.cell(i%40u,i%30u);}

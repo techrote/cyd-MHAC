@@ -22,7 +22,7 @@ public:
     }
 };
 Display lcd; SPIClass touchBus(VSPI); XPT2046_Touchscreen touch(33);
-PerformanceSurface ui; Calibration cal; Frame frame; InkField ink; CellularField cellular; Trace trace; uint16_t pixels[width*strip];
+PerformanceSurface ui; Calibration cal; Frame frame; InkField ink; CellularField cellular; DiffusionField diffusion; Trace trace; uint16_t pixels[width*strip];
 CalibrationWizard wizard;
 using CalState=CalibrationWizard::State;
 CalState calFrame=CalState::Idle;
@@ -103,8 +103,9 @@ void mhac_ui_tick() {
         calFrame=wizard.state(); calIndex=wizard.index(); calReady=wizard.ready();
         mhac::AudioFeatures latest{};
         if(mhac::exchange.features.read(latest)) trace.observe(latest,now);
-        frame={active,ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched(),&ink,ui.scale(),&trace,trace.fresh(now),ui.loopState(),ui.factoryIndex(),ui.factoryAudition(),ui.palette(),ui.mapping(),&cellular};
+        frame={active,ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched(),&ink,ui.scale(),&trace,trace.fresh(now),ui.loopState(),ui.factoryIndex(),ui.factoryAudition(),ui.palette(),ui.mapping(),&cellular,&diffusion};
         cellular.advance(now,frame.mode==cellular_mode,frame.control.x,frame.control.y,frame.control.gate&&!frame.control.mute,frame.analysis&4095u);
+        diffusion.advance(now,frame.mode==diffusion_mode,frame.control.x,frame.control.y,frame.control.gate&&!frame.control.mute,frame.analysis&4095u);
         if(frame.mode==5) ink.advance(now,frame.control.x,frame.control.y,frame.control.gate&&!frame.control.mute,frame.analysis&4095u);
     }
     const uint32_t start=micros();
