@@ -10,7 +10,7 @@
 #include <vector>
 using namespace mhac;
 namespace {
-struct Row { unsigned blocks,mode,x,y,state; };
+struct Row { unsigned blocks,mode,x,y,state,curve; };
 constexpr unsigned max_blocks=11250; // 60 seconds at 24 kHz / 128 samples
 void require(bool ok,const char* message) { if(!ok) throw std::runtime_error(message); }
 std::vector<Row> read_score(std::istream& in) {
@@ -19,24 +19,68 @@ std::vector<Row> read_score(std::istream& in) {
         require(line.size()<=80,"score row too long");
         if(!line.empty() && line.back()=='\r') line.pop_back();
         if(line.empty() || line[0]=='#') continue;
-        std::array<unsigned,5> v{}; const char* p=line.data(); const char* end=p+line.size();
+        std::array<unsigned,6> v{}; const char* p=line.data(); const char* end=p+line.size();
         for(unsigned i=0;i<v.size();++i) {
             auto r=std::from_chars(p,end,v[i]);
             require(r.ec==std::errc{} && r.ptr!=p,"invalid integer field");
             p=r.ptr;
+            if(i==4 && p==end) break; // Legacy five-field row: linear.
             if(i+1<v.size()) { require(p!=end && *p==',',"expected comma"); ++p; }
         }
         require(p==end,"trailing score data");
         require(v[0]>0 && v[0]<=max_blocks-total && v[1]<=counterquotation_session_index &&
-                v[2]<=4095 && v[3]<=4095 && v[4]<=2,"score field out of range");
+                v[2]<=4095 && v[3]<=4095 && v[4]<=2 && v[5]<=2,"score field out of range");
         require(rows.size()<512,"too many score rows");
-        total+=v[0]; rows.push_back({v[0],v[1],v[2],v[3],v[4]});
+        total+=v[0]; rows.push_back({v[0],v[1],v[2],v[3],v[4],v[5]});
     }
     require(in.eof() && !in.bad(),"score read failure");
     require(rows.size()>=2 && rows.front().state==2 && rows.back().state==2 && rows.back().blocks>=48,
             "require initial mute and >=48 final muted blocks");
     return rows;
 }
+// Curves are evaluated at control-block boundaries, never in the DSP loop.
+// 0: legacy linear; 1: immediate target; 2: integer cubic smoothstep.
+unsigned position(unsigned a,unsigned b,unsigned k,unsigned n,unsigned curve) {
+    if(curve==1) return b;
+    if(curve==0) return unsigned(int(a)+(int(b)-int(a))*int(k)/int(n));
+    const int64_t t=k,d=n;
+    return unsigned(int64_t(a)+(int64_t(b)-a)*t*t*(3*d-2*t)/(d*d*d));
+}
+void curve_test() {
+    for(unsigned n:{1u,2u,7u,128u,max_blocks}) for(unsigned curve=0;curve<3;++curve) {
+        unsigned prev=0;
+        for(unsigned k=1;k<=n;++k) {
+            const auto up=position(0,4095,k,n,curve),down=position(4095,0,k,n,curve);
+            require(up>=prev && up<=4095 && up+down==4095,"curve monotonicity/bounds"); prev=up;
+        }
+        require(prev==4095,"curve endpoint");
+    }
+    require(position(0,4095,1,8,1)==4095,"step onset");
+    require(position(0,4095,1,8,2)<position(0,4095,1,8,0),"ease onset");
+    require(position(0,4095,7,8,2)>position(0,4095,7,8,0),"ease ending");
+}
+constexpr char example[]=R"SCORE(# blocks,mode,x,y,state,curve (0 linear,1 step,2 smoothstep)
+# Glass Meridian: resonant strikes, spectral arcs, remembered gestures.
+32,6,1024,1800,2,1
+24,6,1024,1800,1,1
+48,6,1024,1800,0,1
+24,6,2218,3400,1,1
+72,6,2218,3400,0,1
+128,1,1706,3900,1,2
+128,1,3413,900,1,2
+32,1,3413,900,0,1
+96,7,1365,3900,1,2
+96,7,2730,4095,1,2
+96,8,683,3600,1,2
+64,8,2048,4095,1,1
+48,8,2048,4095,0,1
+128,5,1365,3500,1,2
+128,5,683,4095,1,2
+48,5,683,4095,0,1
+96,4,1365,4095,1,1
+96,4,2048,1700,1,2
+64,4,2048,0,2,1
+)SCORE";
 void send(Exchange& io,const Row& r,unsigned x,unsigned y) {
     const bool gate=r.state==1,mute=r.state==2;
     if(r.mode==counterquotation_session_index) io.publish_counterquotation(x,y,gate,mute);
@@ -49,7 +93,7 @@ std::vector<int16_t> render(const std::vector<Row>& rows,unsigned chunk) {
     std::vector<int16_t> out; unsigned x=rows.front().x,y=rows.front().y;
     for(const auto& r:rows) {
         for(unsigned k=1;k<=r.blocks;++k) {
-            const auto ramp=[&](unsigned a,unsigned b) { return unsigned(int(a)+(int(b)-int(a))*int(k)/int(r.blocks)); };
+            const auto ramp=[&](unsigned a,unsigned b) { return position(a,b,k,r.blocks,r.curve); };
             send(io,r,ramp(x,r.x),ramp(y,r.y));
             for(unsigned at=0;at<block;) {
                 const unsigned n=std::min(chunk,block-at); engine.render(io,pcm.data()+at,n); at+=n;
@@ -77,7 +121,9 @@ uint64_t hash(const std::vector<int16_t>& pcm) { uint64_t h=14695981039346656037
 }
 int main(int argc,char** argv) {
     try {
-        require(argc==2 || argc==3,"usage: score_render score.csv [output-prefix]");
+        curve_test();
+        if(argc==2 && std::string(argv[1])=="--example") { std::cout<<example; return 0; }
+        require(argc==2 || argc==3,"usage: score_render score.csv [output-prefix] | --example");
         std::ifstream in(argv[1],std::ios::binary|std::ios::ate);
         require(bool(in) && in.tellg()>=0 && in.tellg()<=65536,"missing or oversized score"); in.seekg(0);
         const auto rows=read_score(in); auto pcm=render(rows,block);
