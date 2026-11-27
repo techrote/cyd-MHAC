@@ -1,0 +1,14 @@
+# AUDIO-037 — asymmetric Recursive Echo reflections (Refs #1)
+
+Draft/HOLD, parent 92322f14d54165b3c146034141fbe5c733074f4b. AUDIO-036 run 45997785268 SUCCESS. Integrated VISUAL-036 245029a3b7c11ba80e1ee9400e4b62e925d4b9f1 run 46000136987 both jobs SUCCESS; Windows 15196734899 and ESP32 15196949757 exact-head and nonexpired by metadata. Archives not independently downloaded this run.
+
+Recursive Echo now has 24 and 64 ms audible taps in the existing 1536-sample ring. Only the original 64 ms tap feeds back (0.2–0.6 gain); the smoothed Y macro increases both wet mix and early reflection contribution (0–0.5 of the wet path). The early read is zero until 576 samples have been written since reset; no stale-data read, modulo, additional voice or persistent storage. Convex wet interpolation and existing feedback bound retained. This deliberately changes the wet sound of mode 5 (including existing presets using that mode); dry Y=0 and other independently played modes retain exact tested PCM. No control/preset wire or storage format changes. Creative exaptation, not formal MHAC or perception result.
+
+Local execution from parent/candidate include directories, GCC 14.2 and Clang 17:
+    g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/echo_taps_test.cpp -o echo_taps_test
+    ./echo_taps_test candidate-
+    clang++ -std=c++17 -O1 -g -ffp-contract=off -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all -Iinclude tools/audio/echo_taps_test.cpp -o echo_taps_san
+    ./echo_taps_san san-
+For the exact parent, build the same test with -DMHAC_ECHO_PARENT and parent headers. All three runs PASS. Candidate 15,360 tap boundary/wrap/impulse/invalidation checks, 2,880,000 exact partition comparisons (128/31/97 chunks) each run, 10 six-second fixtures per execution. One watchdog trip per fixture; stale renewal remains silent; bounds, initial and final mute pass. All ten GCC/Clang candidate PCM files identical. Parent/candidate eight other modes and dry echo exact (1,296,000 samples); wet echo changed 96,515/144,000, first difference at sample 4672 (576 after gate onset), peak 7344. Engine 3444 bytes unchanged. Candidate header blob 340c094effd671accc60cfa3fb2a2e42dbfc2d20 and test blob 6cf1b140be7c6a5cd722089934d9903e815fadb8. Existing audio job extended only. Local direct GitHub DNS resolution unavailable; target CI pending. No physical timing or listening claim.
+
+Read-only refs: Diviner README/MIT 82e06e11e5947e41e888716e7a68e99187410f2e, MHAC README 495a98ca12bae467a507031f04931aa4254b1866, FM-1 README 16c698d9e244559064a9a9a22f834d36912bf498, VST suite notes ac43d777ad39320c18ac7404fe25c02bdc72a8ea. No upstream code reused. No visual-owned changes, main merge, or flash approval. Next: target qualification, visual integration and owner musical/physical audition.

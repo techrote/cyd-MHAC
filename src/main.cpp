@@ -1,0 +1,215 @@
+#include <Arduino.h>
+#include <driver/i2s.h>
+#include <esp_timer.h>
+#include <cstdio>
+#include "mhac_platform.hpp"
+#include "mhac_dac.hpp"
+#include "mhac_audio_start.hpp"
+#include "mhac_audio_fault.hpp"
+#include "mhac_performance_presets.hpp"
+#include <Preferences.h>
+static_assert(mhac::extended_patch_count>=mhac::preset_catalog_v1,"preset catalogue requires patch IDs 0-5");
+
+namespace mhac {
+Exchange exchange;
+TimingMailbox audio_timing;
+PrepareProfileMailbox audio_profile;
+std::atomic<uint32_t> audio_blocks{0}, audio_errors{0};
+}
+static mhac::Engine engine;
+static constexpr i2s_port_t port = I2S_NUM_0;
+static void audio_task(void*) {
+    int16_t samples[mhac::block];
+    uint16_t slots[mhac::block*2];
+    mhac::TimingMeter timing(mhac::audio_block_budget_us);
+    mhac::PrepareProfiler profile;
+#ifndef MHAC_DAC_LEGACY_FLOOR
+    mhac::DacQuantizer dac;
+#endif
+    for (;;) {
+        const auto start=uint32_t(esp_timer_get_time());
+        engine.render(mhac::exchange,samples,mhac::block);
+        const auto rendered=uint32_t(esp_timer_get_time());
+        for(unsigned i=0;i<mhac::block;++i) {
+#ifdef MHAC_DAC_LEGACY_FLOOR
+            const auto u=mhac::dac_floor(samples[i]);
+#else
+            const auto u=dac.pack(samples[i]);
+#endif
+            slots[i*2]=slots[i*2+1]=u;
+        }
+        size_t written=0;
+        // Blocking only on hardware DMA in dedicated task, not in DSP render.
+        const auto prepared=uint32_t(esp_timer_get_time());
+        const auto rc=i2s_write(port,slots,sizeof(slots),&written,pdMS_TO_TICKS(30));
+        const auto end=uint32_t(esp_timer_get_time());
+        const bool ok=rc==ESP_OK && written==sizeof(slots);
+        timing.record(start,rendered,prepared,end,ok,mhac::audio_timing);
+        profile.record(start,prepared,ok,mhac::audio_profile);
+        if(!ok) {
+            mhac::audio_errors.fetch_add(1,std::memory_order_relaxed);
+            i2s_stop(port);
+            i2s_set_dac_mode(I2S_DAC_CHANNEL_DISABLE);
+            vTaskDelete(nullptr); // fail closed; reboot required
+            return;
+        }
+        mhac::audio_blocks.fetch_add(1,std::memory_order_relaxed);
+    }
+}
+static bool audio_begin() {
+    i2s_config_t c{};
+    c.mode=static_cast<i2s_mode_t>(I2S_MODE_MASTER|I2S_MODE_TX|I2S_MODE_DAC_BUILT_IN);
+    c.sample_rate=mhac::rate;
+    c.bits_per_sample=I2S_BITS_PER_SAMPLE_16BIT;
+    c.channel_format=I2S_CHANNEL_FMT_RIGHT_LEFT;
+    c.communication_format=I2S_COMM_FORMAT_STAND_MSB;
+    c.dma_buf_count=4;
+    c.dma_buf_len=mhac::block;
+    c.tx_desc_auto_clear=true;
+    return mhac::start_audio(mhac::audio_errors,
+        [&] { return i2s_driver_install(port,&c,0,nullptr)==ESP_OK; },
+        [] { return i2s_set_dac_mode(I2S_DAC_CHANNEL_LEFT_EN)==ESP_OK; },
+        [] { return xTaskCreatePinnedToCore(audio_task,"mhac-audio",4096,nullptr,5,nullptr,0)==pdPASS; },
+        [] { i2s_set_dac_mode(I2S_DAC_CHANNEL_DISABLE); i2s_driver_uninstall(port); });
+}
+// Explicit UI-thread NVS operations only; no storage call in audio_task.
+// Keep namespace/key stable. Do not erase existing NVS or migrate other data.
+struct NvsSoundBackend {
+    const char* key="sound-v1";
+    bool read(mhac::PresetRecord& out) {
+        Preferences prefs;
+        if(!prefs.begin("mhac-audio",true)) return false;
+        mhac::PresetRecord b{};
+        const bool ok=prefs.getBytesLength(key)==b.size() &&
+                      prefs.getBytes(key,b.data(),b.size())==b.size();
+        prefs.end();
+        if(ok) out=b;
+        return ok;
+    }
+    bool write(const mhac::PresetRecord& b) {
+        Preferences prefs;
+        if(!prefs.begin("mhac-audio",false)) return false;
+        const bool ok=prefs.putBytes(key,b.data(),b.size())==b.size();
+        prefs.end();
+        return ok;
+    }
+};
+// Default diagnostic UI. Visual lane replaces both weak hooks; single control producer.
+void __attribute__((weak)) mhac_ui_begin() {}
+void __attribute__((weak)) mhac_ui_tick() {
+    // A terminal startup or DMA write fault requires reboot; never arm a gate.
+    static bool fault_latched=false;
+    if(mhac::audio_errors.load(std::memory_order_relaxed)!=0) {
+        if(!fault_latched) {
+            mhac::exchange.publish(512,0,false,true);
+            fault_latched=true;
+        }
+        return;
+    }
+    // Explicit keyboard gate: 1/2/3 phase morph, 4–8 other modes, 0 releases, m mutes.
+    // Bounded work; no serial operations on audio task.
+    static uint32_t last=0, quiet_since=millis();
+    static bool sounding=false, muted=true;
+    static mhac::SoundPreset preset{0,512,0};
+    auto selected=[&] { return static_cast<mhac::Patch>(preset.patch); };
+    auto send=[&](unsigned x,unsigned y,bool gate,bool mute) {
+        if(preset.patch==mhac::modal_patch_index) mhac::exchange.publish_modal(x,y,gate,mute);
+        else if(preset.patch==mhac::quotation_patch_index) mhac::exchange.publish_quotation(x,y,gate,mute);
+        else if(preset.patch==mhac::counterquotation_session_index) mhac::exchange.publish_counterquotation(x,y,gate,mute);
+        else if(preset.patch==mhac::formant_session_index) mhac::exchange.publish_formant(x,y,gate,mute);
+        else mhac::exchange.publish_patch(x,y,gate,mute,selected());
+    };
+    auto play=[&] { muted=false; send(preset.x,preset.y,true,false); };
+    for(unsigned i=0;i<16 && Serial.available();++i) {
+        const int c=Serial.read();
+        if(c>='1' && c<='8') {
+            const unsigned key=unsigned(c-'1');
+            preset=key<3?mhac::SoundPreset{0,uint16_t(512+key*1024),uint16_t(key*1800)}:
+                         mhac::SoundPreset{uint8_t(key-2),2300,3400};
+            play();
+            sounding=true; last=millis();
+        } else if(c=='9') {
+            // Explicit opt-in v3 sound; use S/R for the extended preset slot.
+            preset=mhac::SoundPreset{uint8_t(mhac::modal_patch_index),2048,3400};
+            play(); sounding=true; last=millis();
+        } else if(c>='A' && c<='L') {
+            preset=mhac::factory_presets[unsigned(c-'A')].sound;
+            play(); sounding=true; last=millis();
+        } else if(c>='M' && c<='P') {
+            preset=mhac::modal_presets[unsigned(c-'M')].sound;
+            play(); sounding=true; last=millis();
+        } else if(c=='Q') {
+            preset=mhac::SoundPreset{uint8_t(mhac::quotation_patch_index),1365,3400};
+            play(); sounding=true; last=millis();
+        } else if(c=='T') {
+            preset=mhac::SoundPreset{uint8_t(mhac::counterquotation_session_index),1365,3400};
+            play(); sounding=true; last=millis();
+        } else if(c=='V') {
+            preset=mhac::SoundPreset{uint8_t(mhac::formant_session_index),1365,2200};
+            play(); sounding=true; last=millis();
+        } else if(c=='p') {
+            play(); sounding=true; last=millis();
+        } else if(c=='s' || c=='r' || c=='S' || c=='R') {
+            if(!mhac::storage_allowed(muted,sounding,millis(),quiet_since)) {
+                Serial.println("storage blocked; mute and wait at least 250 ms");
+            } else {
+                const bool extended=c=='S' || c=='R', save=c=='s' || c=='S';
+                NvsSoundBackend backend{extended?"sound-v2":"sound-v1"};
+                const auto status=extended
+                    ? (save?mhac::save_performance_sound(backend,preset):mhac::recall_performance_sound(backend,preset))
+                    : (save?mhac::save_sound(backend,preset):mhac::recall_sound(backend,preset));
+                Serial.printf("preset %s %s: %s\n",extended?"extended":"legacy",save?"save":"recall",mhac::store_result_name(status));
+            }
+        } else if(c=='d') {
+            mhac::AudioTiming t{};
+            if(mhac::audio_timing.read(t)) {
+                Serial.printf("timing attempts=%lu failed=%lu prep_over=%lu long_gap=%lu max_us render=%lu prep=%lu write=%lu gap=%lu\n",
+                    (unsigned long)t.attempts,(unsigned long)t.failed_writes,
+                    (unsigned long)t.prepare_over_budget,(unsigned long)t.long_start_gaps,
+                    (unsigned long)t.max_render_us,(unsigned long)t.max_prepare_us,
+                    (unsigned long)t.max_write_us,(unsigned long)t.max_start_gap_us);
+            } else Serial.println("timing unavailable; retry");
+        } else if(c=='0' || c=='m') {
+            muted=c=='m';
+            send(512,0,false,muted); sounding=false; quiet_since=millis();
+        }
+    }
+    if(sounding && uint32_t(millis()-last)>=2000) {
+        send(512,0,false,true); sounding=false; muted=true; quiet_since=millis();
+    } else if(sounding) {
+        // Renew only while the diagnostic UI is running, never from audio_task.
+        play();
+    }
+}
+void setup() {
+    Serial.begin(115200);
+    const bool ready=audio_begin();
+    Serial.println(ready?"MHAC audio initialized; serial 1-9, A-P, Q quotation, T counterquotation, V Formant Reed, p, 0, m, d, s/r legacy, S/R extended":"MHAC audio initialization FAILED");
+    mhac_ui_begin();
+}
+// Common UI thread only; also works when the visual lane overrides weak hooks.
+// Report only after an explicit mute, with a whole line fitting the TX buffer.
+static void report_prepare_profile() {
+    static uint32_t last=0;
+    const uint32_t now=millis();
+    if(uint32_t(now-last)<4000) return;
+    last=now;
+    const uint32_t control=mhac::exchange.control.load(std::memory_order_seq_cst);
+    if((control & (3u<<24))!=(1u<<25)) return;
+    mhac::PrepareProfile p{};
+    if(!mhac::audio_profile.read(p)) return;
+    char line[128];
+    const int n=std::snprintf(line,sizeof(line),"prepdist a=%lu q=%lu,%lu,%lu,%lu,%lu max=%lu fail=%lu\n",
+        (unsigned long)p.attempts,(unsigned long)p.bins[0],(unsigned long)p.bins[1],
+        (unsigned long)p.bins[2],(unsigned long)p.bins[3],(unsigned long)p.bins[4],
+        (unsigned long)p.max_us,(unsigned long)p.failed);
+    if(n>0 && size_t(n)<sizeof(line) && Serial.availableForWrite()>=n)
+        Serial.write(reinterpret_cast<const uint8_t*>(line),size_t(n));
+}
+void loop() {
+    static mhac::AudioFaultNotice notice;
+    mhac_ui_tick(); // preserve mute/fault presentation priority
+    notice.poll(mhac::audio_errors, [] { Serial.println("MHAC audio terminal fault; reboot required"); });
+    report_prepare_profile();
+    delay(1);
+}

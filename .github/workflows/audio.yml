@@ -1,0 +1,118 @@
+name: Audio qualification
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'include/mhac_*.hpp'
+      - 'src/main.cpp'
+      - 'tests/audio_test.cpp'
+      - 'tests/dac_test.cpp'
+      - 'tests/patch_test.cpp'
+      - 'tests/extended_test.cpp'
+      - 'tests/modal_test.cpp'
+      - 'tests/features_test.cpp'
+      - 'tests/features_integration.cpp'
+      - 'tests/timing_test.cpp'
+      - 'tests/preset_test.cpp'
+      - 'tests/preset_store_test.cpp'
+      - 'tests/performance_preset_test.cpp'
+      - 'tests/legacy_compare.cpp'
+      - 'tests/reference/**'
+      - 'tools/audio/**'
+      - 'platformio.ini'
+      - '.github/workflows/audio.yml'
+permissions:
+  contents: read
+jobs:
+  host-and-target:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Host regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p receipts
+          git rev-parse HEAD > receipts/source-sha.txt
+          g++ --version | tee receipts/compiler.txt
+          python3 tools/audio/test_verify_candidate.py -v 2>&1 | tee receipts/partition-verifier-test.txt
+          python3 tools/audio/test_recovery_layout.py -v 2>&1 | tee receipts/recovery-layout-test.txt
+          (cd tools/audio && python3 -m unittest -v test_telemetry_review.py test_fault_telemetry.py) 2>&1 | tee receipts/telemetry-review-test.txt
+          echo "Compile candidate only; no flash approval or physical validation." > receipts/STATUS.txt
+          test "$(git hash-object tests/reference/audio_002.hpp)" = 9b17e33ad666d3a152ade642c4e363d3a51cd0ef
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -pthread -Iinclude tests/audio_test.cpp -o /tmp/audio_test
+          /tmp/audio_test | tee receipts/audio-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/dac_test.cpp -o /tmp/dac_test
+          /tmp/dac_test | tee receipts/dac-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/dac_spectrum.cpp -o /tmp/dac_spectrum
+          /tmp/dac_spectrum | tee receipts/dac-spectrum.csv
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/patch_test.cpp -o /tmp/patch_test
+          /tmp/patch_test | tee receipts/patch-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/legacy_compare.cpp -o /tmp/legacy_compare
+          /tmp/legacy_compare | tee receipts/legacy-compare.txt
+          test "$(git hash-object tests/reference/audio_004.hpp)" = afe9c3357850123c1829370176345a9171c40f44
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/extended_test.cpp -o /tmp/extended_test
+          /tmp/extended_test | tee receipts/extended-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/modal_test.cpp -o /tmp/modal_test
+          /tmp/modal_test | tee receipts/modal-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -pthread -Iinclude tests/features_test.cpp -o /tmp/features_test
+          /tmp/features_test | tee receipts/features-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/features_integration.cpp -o /tmp/features_integration
+          /tmp/features_integration | tee receipts/features-integration.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread -Iinclude tests/timing_test.cpp -o /tmp/timing_test
+          /tmp/timing_test | tee receipts/timing-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread -Iinclude tools/audio/prepare_profile_test.cpp -o /tmp/prepare_profile_test
+          /tmp/prepare_profile_test | tee receipts/prepare-profile-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tools/audio/startup_fault_test.cpp -o /tmp/startup_fault_test
+          /tmp/startup_fault_test | tee receipts/startup-fault-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tools/audio/fault_notice_test.cpp -o /tmp/fault_notice_test
+          /tmp/fault_notice_test | tee receipts/fault-notice-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/preset_test.cpp -o /tmp/preset_test
+          /tmp/preset_test | tee receipts/preset-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/preset_store_test.cpp -o /tmp/preset_store_test
+          /tmp/preset_store_test | tee receipts/preset-store-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/performance_preset_test.cpp -o /tmp/performance_preset_test
+          /tmp/performance_preset_test | tee receipts/performance-preset-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/quotation_study.cpp -o /tmp/quotation_study
+          /tmp/quotation_study | tee receipts/quotation-study.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/counter_colour_test.cpp -o /tmp/counter_colour_test
+          /tmp/counter_colour_test | tee receipts/counter-colour-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/coupling_test.cpp -o /tmp/coupling_test
+          /tmp/coupling_test | tee receipts/coupling-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/idle_cost_test.cpp -o /tmp/idle_cost_test
+          /tmp/idle_cost_test | tee receipts/idle-cost-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/echo_taps_test.cpp -o /tmp/echo_taps_test
+          /tmp/echo_taps_test | tee receipts/echo-taps-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/erasure_relocation_test.cpp -o /tmp/erasure_relocation_test
+          /tmp/erasure_relocation_test | tee receipts/erasure-relocation-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/formant_test.cpp -o /tmp/formant_test
+          /tmp/formant_test | tee receipts/formant-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/catalogue_stress.cpp -o /tmp/catalogue_stress
+          /tmp/catalogue_stress | tee receipts/catalogue-stress.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/score_render.cpp -o /tmp/score_render
+          /tmp/score_render tools/audio/score_counterpoint.csv | tee receipts/score-render.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -pthread -Iinclude tools/audio/mailbox_stress.cpp -o /tmp/mailbox_stress
+          /tmp/mailbox_stress | tee receipts/mailbox-stress.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/pitch_cache_check.cpp -o /tmp/pitch_cache_check
+          /tmp/pitch_cache_check > /tmp/pitch-cache.bin 2> receipts/pitch-cache-test.txt
+          sha256sum /tmp/pitch-cache.bin >> receipts/pitch-cache-test.txt
+      - name: Target compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/pio
+          /tmp/pio/bin/pip install platformio==6.1.18
+          /tmp/pio/bin/pio run -e cyd | tee receipts/target-build.txt
+          /tmp/pio/bin/pio run -e cyd -t mhac_layout | tee receipts/layout-build.txt
+          cp .pio/build/cyd/layout-evidence/* receipts/
+          python3 tools/audio/verify_candidate.py receipts/firmware.bin --partitions receipts/partitions.bin --negative-tests | tee receipts/image-integrity.json
+          (cd receipts && sha256sum firmware.bin bootloader.bin partitions.bin boot_app0.bin > SHA256SUMS && cat SHA256SUMS)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: audio-qualification
+          path: receipts/
+          if-no-files-found: warn
