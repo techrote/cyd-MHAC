@@ -123,6 +123,7 @@ struct Frame {
     const CellularField* cellular=nullptr;
     const DiffusionField* diffusion=nullptr;
     GestureLoop::Style loop_style=GestureLoop::Style::Original;
+    GestureLoop::Preview loop_preview{};
 };
 inline int tri(int v) noexcept { const unsigned u=unsigned(v)&255u; return int(u<128?u*2:(255-u)*2); }
 inline uint16_t rgb(int r,int g,int b) noexcept {
@@ -295,6 +296,29 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
     return rgb(r,g,b);
 }
 inline uint16_t pixel(const Frame& f,int x,int y) noexcept { return pixelAt(f,x,y,frameCursor(f)); }
+// Sparse recorded control-coordinate beads, not measured audio or raw touch.
+// Full-resolution post-pass: at most 16 five-pixel-square marks per frame.
+inline void drawLoopPreview(const Frame& f,int row,uint16_t* out) noexcept {
+    if(f.control.mute || (f.loop_state!=GestureLoop::State::Recording && f.loop_state!=GestureLoop::State::Playing)) return;
+    const auto live=frameCursor(f);
+    const unsigned count=std::min(f.loop_preview.count,GestureLoop::preview_capacity);
+    for(unsigned i=0;i<count;++i) {
+        const auto p=f.loop_preview.points[i];
+        const unsigned x=std::min<unsigned>(p.x,4095), y=std::min<unsigned>(p.y,4095);
+        const auto q=f.mapping==XYMap::Lattice?latticeCursor(x,y,f.scale):
+            LatticeCursor{int(x*319/4095),f.mapping==XYMap::Rhythm?rhythmCenter(rhythmNearest(y)):239-int(y*239/4095)};
+        if(q.y+2<row || q.y-2>=row+strip) continue;
+        const unsigned phase=count>1?i*255u/(count-1):0u;
+        const auto bead=rgb(255-int(phase)*3/5,160+int(phase)/3,64+int(phase)*3/4);
+        for(int py=std::max({q.y-2,row,24});py<=std::min({q.y+2,row+strip-1,215});++py)
+            for(int px=std::max(q.x-2,24);px<=std::min(q.x+2,295);++px) {
+                // Keep the live cursor and rhythm legends intact.
+                const int dx=px-live.x,dy=py-live.y;
+                if(dx*dx+dy*dy<=144 || (f.mapping==XYMap::Rhythm && px<52 && py%60>=28 && py%60<36)) continue;
+                out[(py-row)*width+px]=(std::abs(px-q.x)==2 || std::abs(py-q.y)==2)?rgb(8,16,20):bead;
+            }
+    }
+}
 // Caller provides exactly width*strip words. Last strip is always full (240/8).
 inline void renderStrip(const Frame& f,int y,unsigned step,uint16_t* out) noexcept {
     step=step==4?4:step==2?2:1;
@@ -305,5 +329,6 @@ inline void renderStrip(const Frame& f,int y,unsigned step,uint16_t* out) noexce
             for(unsigned dy=0;dy<step;++dy) for(unsigned dx=0;dx<step;++dx) out[(j+dy)*width+x+dx]=c;
         }
     }
+    drawLoopPreview(f,y,out);
 }
 }

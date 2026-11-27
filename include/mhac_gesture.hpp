@@ -9,6 +9,12 @@ public:
     enum class Style : uint8_t { Original, Glide, Half, Reverse, Double, Pendulum };
     static constexpr unsigned style_count=6;
     struct Point { uint16_t x=0,y=0; bool gate=false; };
+    static constexpr unsigned preview_capacity=16;
+    struct Preview {
+        struct Coordinate { uint16_t x=0,y=0; };
+        Coordinate points[preview_capacity]{};
+        unsigned count=0;
+    };
     static constexpr uint32_t limit_ms=4000, interval_ms=16, rest_ms=100;
 private:
     struct Entry { uint16_t t,x,y; };
@@ -36,6 +42,16 @@ public:
     void restartAfterRest(uint32_t now) noexcept { if(state_==State::Playing) origin_=now-activeWall(); }
     unsigned count() const noexcept { return count_; }
     unsigned duration() const noexcept { return duration_; }
+    // Snapshot in recorded order, never changes playback phase or the audio gate.
+    Preview preview() const noexcept {
+        Preview v{};
+        v.count=std::min<unsigned>(count_,preview_capacity);
+        for(unsigned i=0;i<v.count;++i) {
+            const unsigned at=v.count==1?0:i*(count_-1)/(v.count-1);
+            v.points[i]={points_[at].x,points_[at].y};
+        }
+        return v;
+    }
     void stop() noexcept { state_=State::Idle; count_=duration_=0; }
     void toggle() noexcept { if(state_==State::Idle) state_=State::Armed; else stop(); }
     void observe(Point p,uint32_t now) noexcept {

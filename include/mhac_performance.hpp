@@ -18,6 +18,7 @@ public:
     bool factoryAudition() const noexcept { return surface_.factoryAudition(); }
     bool watchdogLatched() const noexcept { return surface_.watchdogLatched(); }
     GestureLoop::State loopState() const noexcept { return loop_.state(); }
+    GestureLoop::Preview loopPreview() const noexcept { return loop_.preview(); }
     GestureLoop::Style loopStyle() const noexcept { return loop_.style(); }
     void expire(uint32_t now) noexcept {
         surface_.expire(now);

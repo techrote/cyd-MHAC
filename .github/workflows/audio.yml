@@ -75,6 +75,9 @@ jobs:
           /tmp/score_render tools/audio/score_counterpoint.csv | tee receipts/score-render.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -pthread -Iinclude tools/audio/mailbox_stress.cpp -o /tmp/mailbox_stress
           /tmp/mailbox_stress | tee receipts/mailbox-stress.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/pitch_cache_check.cpp -o /tmp/pitch_cache_check
+          /tmp/pitch_cache_check > /tmp/pitch-cache.bin 2> receipts/pitch-cache-test.txt
+          sha256sum /tmp/pitch-cache.bin >> receipts/pitch-cache-test.txt
       - name: Target compile
         shell: bash
         run: |

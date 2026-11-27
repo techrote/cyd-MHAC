@@ -66,6 +66,10 @@ class Engine {
     unsigned age_=control_lease_samples;
     bool expired_=false;
     float hz_=110.f, morph_=0.f, env_=0.f;
+    // Cache the exact pitch target; Y-only changes and heartbeat renewals do not
+    // need another exp2 evaluation. Sentinel forces the first calculation.
+    unsigned pitch_code_=4096u;
+    float pitch_target_=110.f;
     uint32_t swarm_lo_=0, swarm_hi_=0;
     // Integer simplex: exactly 256 total, up to 256 samples per full transition.
     unsigned weights_[mix_patch_count]={256,0,0,0,0,0,0,0};
@@ -98,8 +102,13 @@ public:
             (id==modal_patch_index && (c&modal_opt_in)?modal_patch_index:
             (id==quotation_patch_index && (c&quotation_opt_in) && !(c&modal_opt_in)?quotation_patch_index:0u));
         const bool counter=patch==quotation_patch_index && (c&counterquotation_opt_in);
-        const float x=float(c&4095u)/4095.f, y=float((c>>12)&4095u)/4095.f;
-        const float target=110.f*std::exp2(3.f*x);
+        const unsigned pitch_code=c&4095u;
+        if(pitch_code!=pitch_code_) {
+            const float x=float(pitch_code)/4095.f;
+            pitch_target_=110.f*std::exp2(3.f*x);
+            pitch_code_=pitch_code;
+        }
+        const float y=float((c>>12)&4095u)/4095.f, target=pitch_target_;
         const bool requested=(c&(1u<<24)) && !(c&(1u<<25));
         if(!requested) expired_=false;
         // Expire at a sample boundary, regardless of render partition. No clock or UI calls.
