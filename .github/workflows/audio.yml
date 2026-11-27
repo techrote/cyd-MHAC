@@ -74,6 +74,8 @@ jobs:
           /tmp/performance_preset_test | tee receipts/performance-preset-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/quotation_study.cpp -o /tmp/quotation_study
           /tmp/quotation_study | tee receipts/quotation-study.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/counter_colour_test.cpp -o /tmp/counter_colour_test
+          /tmp/counter_colour_test | tee receipts/counter-colour-test.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/catalogue_stress.cpp -o /tmp/catalogue_stress
           /tmp/catalogue_stress | tee receipts/catalogue-stress.txt
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/audio/score_render.cpp -o /tmp/score_render

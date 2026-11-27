@@ -6,8 +6,10 @@ class PerformanceSurface {
     Surface surface_;
     GestureLoop loop_;
     bool down_=false, consumed_=false, transport_=false, visualOnly_=false;
+    bool overdubArmed_=false, editContact_=false, painting_=false;
     uint32_t transportLast_=0;
-    void cancelIfMuted() noexcept { if(surface_.control().mute) loop_.stop(); }
+    void stopLoop() noexcept { loop_.stop(); overdubArmed_=false; }
+    void cancelIfMuted() noexcept { if(surface_.control().mute) stopLoop(); }
 public:
     Control control() const noexcept { return surface_.control(); }
     unsigned mode() const noexcept { return surface_.mode(); }
@@ -18,25 +20,31 @@ public:
     bool factoryAudition() const noexcept { return surface_.factoryAudition(); }
     bool watchdogLatched() const noexcept { return surface_.watchdogLatched(); }
     GestureLoop::State loopState() const noexcept { return loop_.state(); }
-    GestureLoop::Preview loopPreview() const noexcept { return loop_.preview(); }
+    GestureLoop::Preview loopPreview() const noexcept { auto p=loop_.preview(); p.overdub=overdubArmed_; return p; }
     GestureLoop::Style loopStyle() const noexcept { return loop_.style(); }
     void expire(uint32_t now) noexcept {
         surface_.expire(now);
-        if(transport_ && down_ && uint32_t(now-transportLast_)>100u) forceMute();
+        if((transport_ || editContact_) && down_ && uint32_t(now-transportLast_)>100u) forceMute();
         cancelIfMuted();
     }
     void observeWatchdog(uint32_t trips) noexcept { surface_.observeWatchdog(trips); cancelIfMuted(); }
-    void forceMute() noexcept { surface_.forceMute(); loop_.stop(); }
+    void forceMute() noexcept { surface_.forceMute(); stopLoop(); }
     void sample(bool down,int x,int y,uint32_t now) noexcept {
         expire(now);
         if(down && !down_) {
-            if(loopStyleSelector(x,y)) {
+            const bool playing=loop_.state()==GestureLoop::State::Playing;
+            if(playing && overdubSelector(x,y)) {
+                consumed_=editContact_=visualOnly_=true; transportLast_=now;
+                overdubArmed_=!overdubArmed_;
+            } else if(playing && overdubArmed_ && x>=24 && x<296 && y>=24 && y<216) {
+                consumed_=editContact_=painting_=visualOnly_=true; transportLast_=now;
+            } else if(loopStyleSelector(x,y)) {
                 consumed_=transport_=true; transportLast_=now; loop_.nextStyle();
             } else {
                 const bool wasPlaying=loop_.state()==GestureLoop::State::Playing;
                 // Decorative selectors preserve the recorded audio coordinates and phase.
                 visualOnly_=wasPlaying && ((x>=0 && x<24 && y>=0 && y<24) || paletteSelector(x,y));
-                if((wasPlaying && !visualOnly_) || sceneSelector(x,y) || xyMapSelector(x,y) || soundSelector(x,y) || factoryAction(x,y)!=FactoryAction::None) loop_.stop();
+                if((wasPlaying && !visualOnly_) || sceneSelector(x,y) || xyMapSelector(x,y) || soundSelector(x,y) || factoryAction(x,y)!=FactoryAction::None) stopLoop();
                 if(x>=148 && x<172 && y>=0 && y<24) {
                     consumed_=true;
                     if(!wasPlaying && !surface_.control().mute) loop_.toggle();
@@ -46,10 +54,15 @@ public:
         down_=down;
         if(consumed_) {
             surface_.sample(false,0,0,now);
-            if(transport_ && down) transportLast_=now;
+            if((transport_ || editContact_) && down) transportLast_=now;
+            if(painting_ && down && !surface_.control().mute && loop_.state()==GestureLoop::State::Playing) {
+                const auto value=surface_.mapping()==XYMap::Rhythm?rhythmValue(rhythmBand(y)):touchPoint(x,y).y;
+                loop_.paintTimbre(now,value);
+            }
             if(!down) {
                 if(transport_) loop_.restartAfterRest(now);
-                consumed_=transport_=false;
+                if(painting_) overdubArmed_=false;
+                consumed_=transport_=editContact_=painting_=visualOnly_=false;
             }
             return;
         }

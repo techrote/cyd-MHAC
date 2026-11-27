@@ -97,3 +97,11 @@ bands remain stepped even in glide styles. Top-left visual and bottom palette
 selectors preserve playback phase, gate and sound; other fresh touches interrupt
 playback. Mute, watchdog or stale selector contact cancel the loop.
 The current style appears in the desktop title. Session-only, not saved.
+
+Timbre overdub: during playback tap the small top bar (x208–231, y0–23)
+to arm (amber). Drag inside the performance surface to repaint recorded Y
+values in place; lift to disarm. Vertical position always controls timbre,
+regardless of XY assignment; Rhythm retains four discrete values. Pitch,
+recorded length and gate/rest timing remain unchanged. Unarmed performance
+touch still stops the loop. Mute and watchdog still cancel. Editing is
+session-only and destructive to the painted timbre points; no undo or save.

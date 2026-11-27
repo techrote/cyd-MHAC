@@ -28,7 +28,14 @@ public:
                     // Counterquotation: alternate a lower octave and upper fifth
                     // on recalled marks, retaining the original pitch in history.
                     // Engine steps are bounded to 110..880 Hz at 24 kHz.
-                    if(counter) target_.step=(cursor_&1u)?target_.step+target_.step/2u:target_.step/2u;
+                    if(counter) {
+                        const bool answer=bool(cursor_&1u);
+                        target_.step=answer?target_.step+target_.step/2u:target_.step/2u;
+                        // Contrast the remembered colours: dark lower octave,
+                        // bright upper fifth. Only the recalled target changes;
+                        // keep the raw mark for future untransformed quotation.
+                        target_.timbre=answer?.5f+.5f*target_.timbre:.25f*target_.timbre;
+                    }
                 }
                 marks_[cursor_]={step,y}; cursor_=(cursor_+1u)&3u;
                 if(filled_<4) ++filled_;

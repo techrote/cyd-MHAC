@@ -252,6 +252,9 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
         const unsigned i=unsigned(x-176)/4;
         return i==unsigned(f.loop_style)?rgb(160,202,236):rgb(65,80,94);
     }
+    // Y-only gesture overdub: amber when armed; available only during playback.
+    if(x>=212 && x<228 && y>=8 && y<16 && f.loop_state==GestureLoop::State::Playing)
+        return f.loop_preview.overdub?rgb(255,184,32):rgb(100,132,150);
     // Tiny controls, visible without covering the performance surface.
     if(x<24 && y<24 && (x==4||x==19||y==4||y==19) && x>=4&&x<=19&&y>=4&&y<=19) return rgb(130,180,210);
     if(x>=296 && y<24 && x>=300&&x<=315&&y>=4&&y<=19 && (x<304||x>=312||y<8||y>=16|| (f.control.mute&&std::abs((x-300)-(y-4))<=2))) return f.control.mute?(f.watchdog?rgb(255,184,32):rgb(255,72,48)):rgb(64,220,150);
@@ -301,7 +304,7 @@ inline uint16_t pixel(const Frame& f,int x,int y) noexcept { return pixelAt(f,x,
 inline void drawLoopPreview(const Frame& f,int row,uint16_t* out) noexcept {
     if(f.control.mute || (f.loop_state!=GestureLoop::State::Recording && f.loop_state!=GestureLoop::State::Playing)) return;
     const auto live=frameCursor(f);
-    const unsigned count=std::min(f.loop_preview.count,GestureLoop::preview_capacity);
+    const unsigned count=std::min<unsigned>(f.loop_preview.count,GestureLoop::preview_capacity);
     for(unsigned i=0;i<count;++i) {
         const auto p=f.loop_preview.points[i];
         const unsigned x=std::min<unsigned>(p.x,4095), y=std::min<unsigned>(p.y,4095);

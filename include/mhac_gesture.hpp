@@ -13,7 +13,8 @@ public:
     struct Preview {
         struct Coordinate { uint16_t x=0,y=0; };
         Coordinate points[preview_capacity]{};
-        unsigned count=0;
+        uint8_t count=0;
+        bool overdub=false;
     };
     static constexpr uint32_t limit_ms=4000, interval_ms=16, rest_ms=100;
 private:
@@ -27,6 +28,22 @@ private:
     }
     static uint16_t lerp(uint16_t a,uint16_t b,uint32_t n,uint32_t d) noexcept {
         return uint16_t((uint32_t(a)*(d-n)+uint32_t(b)*n+d/2u)/d);
+    }
+    uint32_t phaseAt(uint32_t now) noexcept {
+        const uint32_t elapsed=now-origin_, phase=elapsed%(activeWall()+rest_ms);
+        origin_+=elapsed-phase;
+        return phase;
+    }
+    uint32_t recordedTime(uint32_t phase) const noexcept {
+        uint32_t t=style_==Style::Half?phase/2u:style_==Style::Double?phase*2u:phase;
+        if(style_==Style::Reverse) t=uint32_t(duration_)-1u-t;
+        if(style_==Style::Pendulum && t>=duration_) t=activeWall()-t;
+        return t;
+    }
+    unsigned pointIndex(uint32_t t) const noexcept {
+        unsigned lo=0,hi=count_;
+        while(lo+1<hi) { const unsigned mid=(lo+hi)/2; if(points_[mid].t<=t) lo=mid; else hi=mid; }
+        return lo;
     }
     uint16_t count_=0, duration_=0;
     uint32_t origin_=0;
@@ -66,18 +83,21 @@ public:
         }
         if(elapsed>=uint32_t(points_[count_-1].t)+interval_ms) append(uint16_t(elapsed),p);
     }
+    // In-place Y-only overdub. No insertion, no timing or gate changes.
+    bool paintTimbre(uint32_t now,unsigned y) noexcept {
+        if(state_!=State::Playing) return false;
+        const auto phase=phaseAt(now);
+        if(phase>=activeWall()) return false;
+        points_[pointIndex(recordedTime(phase))].y=uint16_t(std::min(y,4095u));
+        return true;
+    }
     Point play(uint32_t now,bool smoothX=true,bool smoothY=true) noexcept {
         if(state_!=State::Playing) return {};
-        const uint32_t active=activeWall(), period=active+rest_ms;
-        const uint32_t elapsed=now-origin_, phase=elapsed%period;
-        origin_+=elapsed-phase; // rebase each cycle, including millisecond wrap
+        const uint32_t active=activeWall(), phase=phaseAt(now);
         const bool reverse=style_==Style::Reverse, pendulum=style_==Style::Pendulum;
         if(phase>=active) { const auto& p=points_[(reverse || pendulum)?0:count_-1]; return {p.x,p.y,false}; }
-        uint32_t t=style_==Style::Half?phase/2u:style_==Style::Double?phase*2u:phase;
-        if(reverse) t=uint32_t(duration_)-1u-t;
-        if(pendulum && t>=duration_) t=active-t;
-        unsigned lo=0,hi=count_;
-        while(lo+1<hi) { const unsigned mid=(lo+hi)/2; if(points_[mid].t<=t) lo=mid; else hi=mid; }
+        const auto t=recordedTime(phase);
+        const unsigned lo=pointIndex(t);
         const auto& a=points_[lo];
         if((style_==Style::Glide || style_==Style::Half || pendulum) && lo+1<count_) {
             const auto& b=points_[lo+1];
@@ -97,5 +117,6 @@ constexpr const char* loopStyleName(GestureLoop::Style s) noexcept {
     default: return "Original";
     }
 }
+constexpr bool overdubSelector(int x,int y) noexcept { return x>=208 && x<232 && y>=0 && y<24; }
 constexpr bool loopStyleSelector(int x,int y) noexcept { return x>=176 && x<200 && y>=0 && y<24; }
 }
