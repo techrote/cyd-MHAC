@@ -3,6 +3,7 @@
 #include <esp_timer.h>
 #include "mhac_platform.hpp"
 #include "mhac_dac.hpp"
+#include "mhac_audio_start.hpp"
 #include "mhac_performance_presets.hpp"
 #include <Preferences.h>
 static_assert(mhac::extended_patch_count>=mhac::preset_catalog_v1,"preset catalogue requires patch IDs 0-5");
@@ -60,12 +61,11 @@ static bool audio_begin() {
     c.dma_buf_count=4;
     c.dma_buf_len=mhac::block;
     c.tx_desc_auto_clear=true;
-    if(i2s_driver_install(port,&c,0,nullptr)!=ESP_OK) return false;
-    if(i2s_set_dac_mode(I2S_DAC_CHANNEL_LEFT_EN)==ESP_OK &&
-       xTaskCreatePinnedToCore(audio_task,"mhac-audio",4096,nullptr,5,nullptr,0)==pdPASS) return true;
-    i2s_set_dac_mode(I2S_DAC_CHANNEL_DISABLE);
-    i2s_driver_uninstall(port);
-    return false;
+    return mhac::start_audio(mhac::audio_errors,
+        [&] { return i2s_driver_install(port,&c,0,nullptr)==ESP_OK; },
+        [] { return i2s_set_dac_mode(I2S_DAC_CHANNEL_LEFT_EN)==ESP_OK; },
+        [] { return xTaskCreatePinnedToCore(audio_task,"mhac-audio",4096,nullptr,5,nullptr,0)==pdPASS; },
+        [] { i2s_set_dac_mode(I2S_DAC_CHANNEL_DISABLE); i2s_driver_uninstall(port); });
 }
 // Explicit UI-thread NVS operations only; no storage call in audio_task.
 // Keep namespace/key stable. Do not erase existing NVS or migrate other data.
@@ -92,6 +92,16 @@ struct NvsSoundBackend {
 // Default diagnostic UI. Visual lane replaces both weak hooks; single control producer.
 void __attribute__((weak)) mhac_ui_begin() {}
 void __attribute__((weak)) mhac_ui_tick() {
+    // A terminal startup or DMA write fault requires reboot; never arm a gate.
+    static bool fault_latched=false;
+    if(mhac::audio_errors.load(std::memory_order_relaxed)!=0) {
+        if(!fault_latched) {
+            mhac::exchange.publish(512,0,false,true);
+            Serial.println("MHAC audio terminal fault; reboot required");
+            fault_latched=true;
+        }
+        return;
+    }
     // Explicit keyboard gate: 1/2/3 phase morph, 4–8 other modes, 0 releases, m mutes.
     // Bounded work; no serial operations on audio task.
     static uint32_t last=0, quiet_since=millis();

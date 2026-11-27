@@ -7,6 +7,7 @@
 #include "mhac_visual_audio.hpp"
 #include "mhac_performance.hpp"
 #include "mhac_visual_budget.hpp"
+#include "mhac_fault_screen.hpp"
 namespace {
 using namespace mhac::visual;
 static_assert(mhac::feature_version==1 && mhac::rate==24000 && mhac::feature_window==128,"feature contract pin required");
@@ -63,7 +64,19 @@ void mhac_ui_tick() {
     if(!ready) return;
     const uint32_t now=millis(); ui.expire(now);
     ui.observeWatchdog(mhac::exchange.watchdog_trips.load(std::memory_order_relaxed));
-    if(mhac::audio_errors.load(std::memory_order_relaxed)!=0) fault=true;
+    if(!fault && mhac::audio_errors.load(std::memory_order_relaxed)!=0) {
+        fault=true; row=0; wizard.cancel(); ui.forceMute(); publish();
+    }
+    // Terminal driver failure: no further touch, calibration or animated effects.
+    // Draw once in bounded strips, then leave the display and audio muted.
+    if(fault) {
+        if(row<height) {
+            renderFaultStrip(row,pixels);
+            lcd.pushImage(0,row,width,strip,pixels);
+            row+=strip;
+        }
+        return;
+    }
     const bool boot=digitalRead(0)==LOW;
     if(boot && !bootHeld) {
         bootStart=now; bootHandled=wizard.state()!=CalState::Idle;
@@ -71,23 +84,22 @@ void mhac_ui_tick() {
         suppressTouch=true;
     }
     bootHeld=boot;
-    if(boot && !bootHandled && !fault && uint32_t(now-bootStart)>=1200) {
+    if(boot && !bootHandled && uint32_t(now-bootStart)>=1200) {
         wizard.begin(now); bootHandled=true;
     }
-    if(fault) wizard.cancel();
-    if(fault || boot || wizard.state()!=CalState::Idle || suppressTouch) ui.forceMute();
+    if(boot || wizard.state()!=CalState::Idle || suppressTouch) ui.forceMute();
     if((wizard.state()==CalState::Accepted || wizard.state()==CalState::Rejected)
             && uint32_t(now-calStatusStart)>=900) wizard.cancel();
     if(uint32_t(now-lastPoll)>=8) {
         lastPoll=now; const auto p=touch.getPoint(); const bool down=p.z>=400;
-        if(wizard.active() && !boot && !fault) {
+        if(wizard.active() && !boot) {
             wizard.sample(down,p.x,p.y,now);
             if(!wizard.active()) {
                 calStatusStart=now;
                 if(wizard.state()==CalState::Accepted) cal=wizard.result();
             }
         }
-        if(fault || boot || wizard.state()!=CalState::Idle || suppressTouch) {
+        if(boot || wizard.state()!=CalState::Idle || suppressTouch) {
             ui.forceMute();
             if(!down && !boot && wizard.state()==CalState::Idle && !fault) {
                 ui.sample(false,0,0,now); suppressTouch=false;
