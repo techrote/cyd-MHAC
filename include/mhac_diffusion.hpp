@@ -10,7 +10,8 @@ class DiffusionField {
     Grid cells_[2]{};
     unsigned front_=0;
     uint32_t last_=0,remainder_=0;
-    bool active_=false;
+    bool active_=false, initialized_=false, stroke_=false;
+    int8_t last_x_=0,last_y_=0;
     static int u(uint32_t v) noexcept { return int(v&8191u); }
     static int v(uint32_t c) noexcept { return int(c>>13); }
     static uint32_t pack(int a,int b) noexcept {
@@ -22,6 +23,17 @@ class DiffusionField {
             const int i=((y+dy+h)%h)*w+(x+dx+w)%w;
             g[i]=pack(std::min(u(g[i]),2048),std::max(v(g[i]),1536));
         }
+    }
+    // Stamp at most nine points along a held gesture, with <=4 cells per interval.
+    // No interpolation across lift, mute, or visual deselection.
+    void paint(int x,int y) noexcept {
+        if(stroke_) {
+            const int dx=x-last_x_,dy=y-last_y_;
+            const int span=std::max(dx<0?-dx:dx,dy<0?-dy:dy);
+            const int count=(span+3)/4;
+            for(int i=1;i<count;++i) seed(last_x_+dx*i/count,last_y_+dy*i/count);
+        }
+        seed(x,y); last_x_=int8_t(x); last_y_=int8_t(y); stroke_=true;
     }
     void evolve(unsigned peak) noexcept {
         const auto& g=cells_[front_]; auto& n=cells_[front_^1u];
@@ -39,15 +51,19 @@ class DiffusionField {
 public:
     static constexpr unsigned period=12,max_steps=4;
     void advance(uint32_t now,bool selected,unsigned x,unsigned y,bool gate,unsigned peak) noexcept {
-        if(!selected) { active_=false; return; }
+        if(!selected) { active_=false; stroke_=false; return; }
         if(!active_) {
-            front_=0; cells_[0].fill(pack(one,0)); active_=true; last_=now; remainder_=0;
-            seed(8,6); seed(23,17);
+            active_=true; last_=now; remainder_=0; stroke_=false;
+            if(!initialized_) {
+                front_=0; cells_[0].fill(pack(one,0)); initialized_=true;
+                seed(8,6); seed(23,17);
+            }
         }
+        if(!gate) stroke_=false;
         const uint32_t elapsed=std::min(now-last_,period*max_steps)+remainder_;
         last_=now; remainder_=elapsed%period;
         for(unsigned i=0;i<elapsed/period;++i) {
-            if(gate) seed(int(std::min(x,4095u)*31u/4095u),23-int(std::min(y,4095u)*23u/4095u));
+            if(gate) paint(int(std::min(x,4095u)*31u/4095u),23-int(std::min(y,4095u)*23u/4095u));
             evolve(peak);
         }
     }

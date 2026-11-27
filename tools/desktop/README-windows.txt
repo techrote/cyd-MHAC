@@ -69,7 +69,10 @@ Ninth session sound: Counterquotation. From Phase Morph tap the bottom-left
 
 Twelfth visual engine: Diffusion. From Resonance tap top-left eleven times.
 Hold and drag to seed the reaction-diffusion field; aggregate PCM peak
-modulates its evolution. This is generative art, not acoustic telemetry.
+modulates its evolution. Fast held gestures paint connected trails; the field
+pauses when another visual is selected and resumes when you return, without
+catch-up simulation or bridging across the observed inactive interval. State
+is session-only. This is generative art, not acoustic telemetry.
 
 Six session scenes: tap the six green/grey bars at bottom x40–87 (release
 between taps). One tap selects sound, visual, palette, mapping and scale,
