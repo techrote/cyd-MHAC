@@ -1,0 +1,288 @@
+name: Visual qualification
+on:
+  pull_request:
+    branches: [audio/cyd-audio-001, main]
+    paths:
+      - 'include/mhac_calibration.hpp'
+      - 'tests/calibration_test.cpp'
+      - 'include/mhac_visual.hpp'
+      - 'include/mhac_caustic.hpp'
+      - 'tests/caustic_layers_test.cpp'
+      - 'include/mhac_glyph.hpp'
+      - 'tests/glyph_study.cpp'
+      - 'include/mhac_prism.hpp'
+      - 'tests/prism_study.cpp'
+      - 'include/mhac_fault_screen.hpp'
+      - 'tests/fault_screen_test.cpp'
+      - 'include/mhac_scene.hpp'
+      - 'tests/scene_test.cpp'
+      - 'include/mhac_visual_budget.hpp'
+      - 'tests/visual_budget_test.cpp'
+      - 'include/mhac_prepare_profile.hpp'
+      - 'tests/prepare_profile_ui_test.cpp'
+      - 'tools/audio/prepare_profile_test.cpp'
+      - 'include/mhac_palette.hpp'
+      - 'include/mhac_xy_map.hpp'
+      - 'include/mhac_rhythm_legend.hpp'
+      - 'tests/rhythm_legend_test.cpp'
+      - 'include/mhac_lattice.hpp'
+      - 'tests/lattice_test.cpp'
+      - 'tests/xy_map_test.cpp'
+      - 'tests/palette_test.cpp'
+      - 'include/mhac_visual_patch.hpp'
+      - 'tests/chime_ui_test.cpp'
+      - 'tests/formant_ui_dispatch_test.cpp'
+      - 'include/mhac_factory_ui.hpp'
+      - 'include/mhac_presets.hpp'
+      - 'tests/factory_ui_test.cpp'
+      - 'include/mhac_desktop_audio.hpp'
+      - 'tests/desktop_audio_test.cpp'
+      - 'tools/desktop/**'
+      - 'include/mhac_gesture.hpp'
+      - 'include/mhac_trajectory.hpp'
+      - 'tests/trajectory_test.cpp'
+      - 'include/mhac_performance.hpp'
+      - 'include/mhac_timing.hpp'
+      - 'tests/gesture_test.cpp'
+      - 'tests/loop_transport_test.cpp'
+      - 'tests/loop_preview_test.cpp'
+      - 'tests/loop_visual_live_test.cpp'
+      - 'tests/overdub_test.cpp'
+      - 'tests/pitch_core_test.cpp'
+      - 'tests/retrograde_test.cpp'
+      - 'tests/timbre_mirror_test.cpp'
+      - 'tests/pitch_overdub_test.cpp'
+      - 'tests/performance_test.cpp'
+      - 'include/mhac_trace.hpp'
+      - 'include/mhac_features.hpp'
+      - 'tests/trace_test.cpp'
+      - 'tests/trace_integration.cpp'
+      - 'include/mhac_scale.hpp'
+      - 'tests/scale_test.cpp'
+      - 'tests/extended_test.cpp'
+      - 'include/mhac_cellular.hpp'
+      - 'include/mhac_diffusion.hpp'
+      - 'include/mhac_biolume.hpp'
+      - 'tests/biolume_test.cpp'
+      - 'tests/diffusion_study.cpp'
+      - 'tests/diffusion_memory_test.cpp'
+      - 'tests/cellular_study.cpp'
+      - 'include/mhac_ink.hpp'
+      - 'tests/ink_test.cpp'
+      - 'tests/legacy_compare.cpp'
+      - 'platformio.ini'
+      - 'src/mhac_visual_cyd.cpp'
+      - 'tests/visual_test.cpp'
+      - 'tests/visual_002_test.cpp'
+      - 'tests/caustic_study.cpp'
+      - 'tests/quotation_ui_test.cpp'
+      - 'tests/visual_003_test.cpp'
+      - 'include/mhac_visual_audio.hpp'
+      - 'include/mhac_audio.hpp'
+      - 'src/main.cpp'
+      - 'platformio.visual.ini'
+      - '.github/workflows/visual.yml'
+permissions:
+  contents: read
+jobs:
+  visual-host-and-target:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Native replay and preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p receipts
+          git rev-parse HEAD > receipts/source-sha.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pthread -Iinclude tools/audio/prepare_profile_test.cpp -o /tmp/prepare_profile_test
+          /tmp/prepare_profile_test | tee receipts/prepare-profile-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/prepare_profile_ui_test.cpp -o /tmp/prepare_profile_ui_test
+          /tmp/prepare_profile_ui_test | tee receipts/prepare-profile-ui-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/scene_test.cpp -o /tmp/scene_test
+          /tmp/scene_test receipts/scene- | tee receipts/scene-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/formant_ui_dispatch_test.cpp -o /tmp/formant_ui_dispatch_test
+          /tmp/formant_ui_dispatch_test | tee receipts/formant-ui-dispatch.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/visual_budget_test.cpp -o /tmp/visual_budget_test
+          /tmp/visual_budget_test | tee receipts/visual-budget-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/palette_test.cpp -o /tmp/palette_test
+          /tmp/palette_test | tee receipts/palette-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/xy_map_test.cpp -o /tmp/xy_map_test
+          /tmp/xy_map_test | tee receipts/xy-map-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/rhythm_legend_test.cpp -o /tmp/rhythm_legend_test
+          /tmp/rhythm_legend_test | tee receipts/rhythm-legend-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/lattice_test.cpp -o /tmp/lattice_test
+          /tmp/lattice_test | tee receipts/lattice-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/calibration_test.cpp -o /tmp/calibration_test
+          /tmp/calibration_test | tee receipts/calibration-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/chime_ui_test.cpp -o /tmp/chime_ui_test
+          /tmp/chime_ui_test | tee receipts/chime-ui-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_test.cpp -o /tmp/visual_test
+          /tmp/visual_test receipts | tee receipts/host-replay.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/gesture_test.cpp -o /tmp/gesture_test
+          /tmp/gesture_test | tee receipts/gesture-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/loop_transport_test.cpp -o /tmp/loop_transport_test
+          /tmp/loop_transport_test | tee receipts/loop-transport-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/loop_preview_test.cpp -o /tmp/loop_preview_test
+          /tmp/loop_preview_test receipts/trajectory.ppm | tee receipts/loop-preview-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/trajectory_test.cpp -o /tmp/trajectory_test
+          /tmp/trajectory_test | tee receipts/trajectory-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/loop_visual_live_test.cpp -o /tmp/loop_visual_live_test
+          /tmp/loop_visual_live_test | tee receipts/loop-visual-live-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/overdub_test.cpp -o /tmp/overdub_test
+          /tmp/overdub_test | tee receipts/overdub-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/pitch_core_test.cpp -o /tmp/pitch_core_test
+          /tmp/pitch_core_test | tee receipts/pitch-core-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/retrograde_test.cpp -o /tmp/retrograde_test
+          /tmp/retrograde_test | tee receipts/retrograde-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/timbre_mirror_test.cpp -o /tmp/timbre_mirror_test
+          /tmp/timbre_mirror_test | tee receipts/timbre-mirror-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/pitch_overdub_test.cpp -o /tmp/pitch_overdub_test
+          /tmp/pitch_overdub_test | tee receipts/pitch-overdub-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/fault_screen_test.cpp -o /tmp/fault_screen_test
+          /tmp/fault_screen_test | tee receipts/fault-screen-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/performance_test.cpp -o /tmp/performance_test
+          /tmp/performance_test receipts/lattice.ppm | tee receipts/performance-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/factory_ui_test.cpp -o /tmp/factory_ui_test
+          /tmp/factory_ui_test | tee receipts/factory-ui-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/trace_test.cpp -o /tmp/trace_test
+          /tmp/trace_test | tee receipts/trace-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/trace_integration.cpp -o /tmp/trace_integration
+          /tmp/trace_integration receipts/trace.ppm | tee receipts/trace-integration.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/caustic_study.cpp -o /tmp/caustic_study
+          /tmp/caustic_study receipts/caustic- | tee receipts/caustic-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/caustic_layers_test.cpp -o /tmp/caustic_layers_test
+          /tmp/caustic_layers_test receipts/caustic-layer- | tee receipts/caustic-layers-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/glyph_study.cpp -o /tmp/glyph_study
+          /tmp/glyph_study receipts/glyph- | tee receipts/glyph-study.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/prism_study.cpp -o /tmp/prism_study
+          /tmp/prism_study receipts/prism- | tee receipts/prism-study.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/quotation_ui_test.cpp -o /tmp/quotation_ui_test
+          /tmp/quotation_ui_test receipts/quotation- | tee receipts/quotation-ui-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/cellular_study.cpp -o /tmp/cellular_study
+          /tmp/cellular_study receipts/cellular- | tee receipts/cellular-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/diffusion_study.cpp -o /tmp/diffusion_study
+          /tmp/diffusion_study receipts/diffusion- | tee receipts/diffusion-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/diffusion_memory_test.cpp -o /tmp/diffusion_memory_test
+          /tmp/diffusion_memory_test receipts/diffusion-memory- | tee receipts/diffusion-memory-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/biolume_test.cpp -o /tmp/biolume_test
+          /tmp/biolume_test receipts/biolume- | tee receipts/biolume-test.txt
+          mkdir -p receipts/five-modes
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_002_test.cpp -o /tmp/visual_002_test
+          /tmp/visual_002_test receipts/five-modes | tee receipts/host-visual-002.txt
+          mkdir -p receipts/six-pairs
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_003_test.cpp -o /tmp/visual_003_test
+          /tmp/visual_003_test receipts/six-pairs | tee receipts/host-visual-003.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/ink_test.cpp -o /tmp/ink_test
+          /tmp/ink_test receipts/ink-field.ppm | tee receipts/ink-test.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/scale_test.cpp -o /tmp/scale_test
+          /tmp/scale_test | tee receipts/scale-test.txt
+          test "$(git hash-object tests/reference/audio_004.hpp)" = afe9c3357850123c1829370176345a9171c40f44
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/extended_test.cpp -o /tmp/extended_test
+          /tmp/extended_test | tee receipts/extended-test.txt
+          test "$(git hash-object tests/reference/audio_002.hpp)" = 9b17e33ad666d3a152ade642c4e363d3a51cd0ef
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/legacy_compare.cpp -o /tmp/legacy_compare
+          /tmp/legacy_compare | tee receipts/legacy-compare.txt
+      - name: Desktop audition smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/desktop_audio_test.cpp -o /tmp/desktop_audio_test
+          /tmp/desktop_audio_test | tee receipts/desktop-audio-test.txt
+          if ! pkg-config --exists sdl2; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends libsdl2-dev
+          fi
+          pkg-config --modversion sdl2 > receipts/desktop-sdl-version.txt
+          g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tools/desktop/main.cpp $(pkg-config --cflags --libs sdl2) -o /tmp/mhac-desktop
+          SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy /tmp/mhac-desktop --smoke receipts/desktop-loop.ppm | tee receipts/desktop-smoke.txt
+          cp /tmp/mhac-desktop receipts/mhac-desktop-linux
+      - name: Target compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/pio
+          /tmp/pio/bin/pip install platformio==6.1.18
+          /tmp/pio/bin/pio run -c platformio.visual.ini -e cyd-visual | tee receipts/target-build.txt
+          /tmp/pio/bin/pio run -c platformio.visual.ini -e cyd-visual -t mhac_layout | tee receipts/layout-build.txt
+          cp .pio/build/cyd-visual/layout-evidence/* receipts/
+          python3 tools/audio/verify_candidate.py receipts/firmware.bin --partitions receipts/partitions.bin --negative-tests | tee receipts/image-integrity.json
+          (cd receipts && sha256sum firmware.bin bootloader.bin partitions.bin boot_app0.bin > SHA256SUMS && cat SHA256SUMS)
+          echo "Compile candidate only; no flash approval or physical validation." > receipts/STATUS.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: visual-qualification
+          path: receipts/
+          if-no-files-found: warn
+
+  visual-windows-audition:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: libsdl-org/SDL
+          ref: 5d249570393f7a37e037abf22cd6012a4cc56a71
+          path: _sdl2
+          persist-credentials: false
+      - name: Configure and compile pinned static SDL2
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force receipts-windows | Out-Null
+          git rev-parse HEAD | Set-Content receipts-windows/source-sha.txt
+          git -C _sdl2 rev-parse HEAD | Set-Content receipts-windows/sdl-source-sha.txt
+          cmake --version | Tee-Object receipts-windows/cmake-version.txt
+          cmake -S tools/desktop -B build-win -G "Visual Studio 17 2022" -A x64 "-DMHAC_SDL_SOURCE=$PWD/_sdl2" -DCMAKE_POLICY_VERSION_MINIMUM=3.10 2>&1 | Tee-Object receipts-windows/configure.txt
+          if ($LASTEXITCODE -ne 0) { throw "CMake configure failed" }
+          cmake --build build-win --config Release --parallel 4 --target mhac-desktop desktop-audio-test 2>&1 | Tee-Object receipts-windows/build.txt
+          if ($LASTEXITCODE -ne 0) { throw "CMake build failed" }
+      - name: Native Windows regression and relocatable audition package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ctest --test-dir build-win -C Release --output-on-failure -V 2>&1 | Tee-Object receipts-windows/ctest.txt
+          if ($LASTEXITCODE -ne 0) { throw "Windows native tests failed" }
+          $stage = Join-Path $PWD 'CYD MHAC portable audition'
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          Copy-Item build-win/Release/mhac-desktop.exe $stage
+          Copy-Item 'tools/desktop/Open CYD-MHAC.cmd' $stage
+          Copy-Item tools/desktop/README-windows.txt (Join-Path $stage 'README.txt')
+          Copy-Item _sdl2/LICENSE.txt (Join-Path $stage 'SDL2-LICENSE.txt')
+          Copy-Item docs/visual-diviner-license.txt $stage
+          Copy-Item receipts-windows/source-sha.txt,receipts-windows/sdl-source-sha.txt $stage
+          $oldPath = $env:PATH
+          Push-Location $stage
+          try {
+            $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+            $env:SDL_VIDEODRIVER = 'dummy'
+            $env:SDL_AUDIODRIVER = 'dummy'
+            $capture = Join-Path $stage 'desktop-loop.ppm'
+            & .\mhac-desktop.exe --smoke $capture 2>&1 | Tee-Object desktop-smoke.txt
+            if ($LASTEXITCODE -ne 0 -or !(Test-Path $capture)) { throw "Staged smoke failed" }
+            Get-ChildItem -File | Sort-Object Name | ForEach-Object {
+              "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)"
+            } | Set-Content SHA256SUMS.txt -Encoding ascii
+          } finally {
+            Pop-Location
+            $env:PATH = $oldPath
+            Remove-Item Env:SDL_VIDEODRIVER,Env:SDL_AUDIODRIVER -ErrorAction SilentlyContinue
+          }
+          Copy-Item (Join-Path $stage 'desktop-smoke.txt') receipts-windows/staged-smoke.txt
+          $zip = Join-Path $PWD 'receipts-windows/CYD-MHAC-Windows-x64.zip'
+          Compress-Archive -Path "$stage\*" -DestinationPath $zip -Force
+          "$((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant())  CYD-MHAC-Windows-x64.zip" | Set-Content receipts-windows/SHA256SUMS.txt -Encoding ascii
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: visual-windows-audition
+          path: receipts-windows/
+          if-no-files-found: warn

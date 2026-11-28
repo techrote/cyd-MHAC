@@ -1,0 +1,12 @@
+# VISUAL-043 — preparation profile integration (refs #1, #3, #4)
+
+Integrate AUDIO-042 6db2b302034d4253d7f1f115de7e41b923560449 unchanged into VISUAL-042 fe407b75b47f5161071a3d3d0b29601ee8903293, preserving both parents. Both exact predecessor runs completed successfully: audio 46077450154 (host regression and target compile, artifact 15235602546), visual 46071492436. The six audio paths do not intersect the preceding visual delta. No DSP, touchscreen, scene, preset, driver, or quality policy changes. Existing pinned Diviner/MHAC/FM-1 provenance retained; no upstream code imported. No new CI job or dependency.
+
+The strong visual hooks publish through the common packed control contract; the shared Arduino loop executes its new muted-and-gate-closed profile report after UI tick. Native test uses actual visual publisher for all ten modes and all gate/mute combinations, exact AUDIO-042 profiler and two independent engines (only one with synthetic profile instrumentation between blocks). This checks control predicate and absence of PCM differences at that seam, not Arduino UART behavior, display scheduling or actual DMA. Each test run: 40 gate/mute comparisons, 327680 exact PCM samples, ten profile sequences including wrap, bin totals, cadence, terminal failure and final digital silence. GCC optimized and Clang ASan/UBSan PASS. Tested header identities checked against exact refs; test blob 0868f3a8dd9d2c0882621beba0f7ff6e3d156076. Reproduce:
+
+```
+g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/prepare_profile_ui_test.cpp -o /tmp/profile-ui && /tmp/profile-ui
+clang++ -std=c++17 -O1 -g -ffp-contract=off -fsanitize=address,undefined -fno-omit-frame-pointer -Wall -Wextra -Werror -Iinclude tests/prepare_profile_ui_test.cpp -o /tmp/profile-ui-san && /tmp/profile-ui-san
+```
+
+Existing visual Linux/target job also executes the unchanged audio profiler regression and new integration test. Windows package and target build remain exact-head CI gates. Prior VISUAL-042 Windows 15232309813 and target 15232319999 remain the preceding qualified candidate. Actual hardware UART space/cadence, runtime resources, DAC continuity and simultaneous display workload are unmeasured. Offline histogram reviewer remains future work; one boot per workload, compare bin deltas, not lifetime maxima, and do not infer physical continuity from counters. Draft/HOLD; no merge or physical flash approval.
