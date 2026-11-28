@@ -54,13 +54,24 @@ int main(int argc,char** argv) {
         f.control.mute=true;f.watchdog=true;for(unsigned q:{1u,2u,4u}){renderStrip(f,0,q,buf.data()+1);assert(buf[1+4*width+300]==rgb(255,184,32));}
         std::printf("frame %u hash %016llx occupied %u/768\n",n,static_cast<unsigned long long>(h),occupied);
     }
-    touch(false,0,0);tap(10,10);assert(ui.mode()==0);assert(active>0&&!io.watchdog_trips.load());
+    touch(false,0,0);tap(10,10);assert(ui.mode()==biolume_mode);tap(10,10);assert(ui.mode()==0);assert(active>0&&!io.watchdog_trips.load());
     std::printf("diffusion PASS: 691200 pixel comparisons, 3072 state equivalences, 2304 cell bounds, %u active PCM samples, %zu bytes\n",active,sizeof(DiffusionField));
-    Frame f{};f.mode=diffusion_mode;f.diffusion=&field;
-    for(unsigned q:{1u,2u,4u}) {
-        uint64_t sum=0;const auto start=std::chrono::steady_clock::now();
-        for(unsigned i=0;i<180;++i)for(int y=0;y<height;y+=strip){renderStrip(f,y,q,buf.data()+1);sum+=buf[1+i%(width*strip)];}
-        std::printf("step %u %.5f ms/frame checksum %llu\n",q,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count()/180,static_cast<unsigned long long>(sum));
+    Frame f{};f.diffusion=&field;f.analysis=io.snapshot();f.control=ui.control();
+    // Same frozen pigment, control and tick sequence for each optical mode.
+    std::array<uint32_t,768> frozen{};
+    for(int y=0;y<24;++y)for(int x=0;x<32;++x)frozen[y*32+x]=field.cell(x,y);
+    for(unsigned mode:{diffusion_mode,biolume_mode}) {
+        f.mode=mode;
+        for(unsigned q:{1u,2u,4u}) {
+            uint64_t sum=0;const auto start=std::chrono::steady_clock::now();
+            for(unsigned i=0;i<180;++i) {
+                f.tick=i;
+                for(int y=0;y<height;y+=strip){renderStrip(f,y,q,buf.data()+1);sum+=buf[1+i%(width*strip)];}
+            }
+            std::printf("mode %u step %u %.5f ms/frame checksum %llu\n",mode,q,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count()/180,static_cast<unsigned long long>(sum));
+            assert(buf.front()==0x1234&&buf.back()==0x5678);
+            for(int y=0;y<24;++y)for(int x=0;x<32;++x)assert(frozen[y*32+x]==field.cell(x,y));
+        }
     }
     const auto start=std::chrono::steady_clock::now();unsigned sum=0;
     field.advance(0,false,0,0,false,0);field.advance(0,true,0,0,false,0);
