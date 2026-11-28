@@ -67,7 +67,11 @@ Ninth session sound: Counterquotation. From Phase Morph tap the bottom-left
  octave below and fifth above; wait at least 500 ms of active synthesis.
  The factory bank remains 16 entries; this variant is session-only.
 
-Twelfth visual engine: Diffusion. From Resonance tap top-left eleven times.
+Thirteenth visual engine: Biolume. From Resonance tap top-left twelve times.
+ Biolume shares the Diffusion canvas and illuminates its pigment with animated
+ sheets driven by gesture, oscillator phase and aggregate PCM peak. Switching
+ between the two keeps the field; other modes pause it. Not a spectrum.
+ Twelfth visual engine: Diffusion. From Resonance tap top-left eleven times.
 Hold and drag to seed the reaction-diffusion field; aggregate PCM peak
 modulates its evolution. Fast held gestures paint connected trails; the field
 pauses when another visual is selected and resumes when you return, without

@@ -30,9 +30,12 @@ int main(int argc,char** argv) {
     ink.advance(0,1000,1000,true,analysis&4095u);ink.advance(25,2760,1620,true,analysis&4095u);
     CellularField cellular; cellular.advance(0,true,c.x,c.y,true,analysis&4095u);
     cellular.advance(200,true,c.x,c.y,true,analysis&4095u);
+    DiffusionField diffusion; diffusion.advance(0,true,500,500,true,analysis&4095u);
+    for(unsigned now=12;now<=240;now+=12) diffusion.advance(now,true,now*15,4095-now*12,true,analysis&4095u);
+    assert(usesDiffusion(diffusion_mode) && usesDiffusion(biolume_mode) && !usesDiffusion(0));
     std::array<uint64_t,mode_count> hashes{};
     for(unsigned m=0;m<mode_count;++m){
-        Frame f{c,m,analysis,17,false,&ink}; f.cellular=&cellular;uint64_t h=14695981039346656037ull;
+        Frame f{c,m,analysis,17,false,&ink}; f.cellular=&cellular; if(usesDiffusion(m)) f.diffusion=&diffusion;uint64_t h=14695981039346656037ull;
         std::ofstream out;if(argc==2){out.open(std::string(argv[1])+"/mode"+std::to_string(m)+".ppm",std::ios::binary);assert(out);out<<"P6\n320 240\n255\n";}
         for(int y=0;y<height;y+=strip){renderStrip(f,y,1,buf.data()+1);for(int i=1;i<=width*strip;++i){auto v=buf[i];h=(h^v)*1099511628211ull;if(out){const unsigned char rgb8[]={static_cast<unsigned char>(((v>>11)&31)*255/31),static_cast<unsigned char>(((v>>5)&63)*255/63),static_cast<unsigned char>((v&31)*255/31)};out.write(reinterpret_cast<const char*>(rgb8),3);}}}
         hashes[m]=h;for(unsigned k=0;k<m;++k)assert(hashes[k]!=h);
@@ -40,5 +43,5 @@ int main(int argc,char** argv) {
         std::cout<<"mode "<<m<<" hash "<<std::hex<<h<<std::dec<<'\n';
     }
     for(unsigned q:{1u,2u,4u}){auto start=std::chrono::steady_clock::now();uint64_t sum=0;for(unsigned i=0;i<200;++i)for(int y=0;y<height;y+=strip){renderStrip(Frame{c,3+i%2,analysis,i},y,q,buf.data()+1);sum+=buf[1+i%(width*strip)];}std::cout<<"new modes step "<<q<<" ms/frame "<<std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count()/200<<" checksum "<<sum<<'\n';}
-    std::cout<<"PASS eleven-mode replay and real audio watchdog/rearm\n";
+    std::cout<<"PASS thirteen-mode replay and real audio watchdog/rearm\n";
 }

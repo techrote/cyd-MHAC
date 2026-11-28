@@ -62,6 +62,8 @@ on:
       - 'tests/extended_test.cpp'
       - 'include/mhac_cellular.hpp'
       - 'include/mhac_diffusion.hpp'
+      - 'include/mhac_biolume.hpp'
+      - 'tests/biolume_test.cpp'
       - 'tests/diffusion_study.cpp'
       - 'tests/diffusion_memory_test.cpp'
       - 'tests/cellular_study.cpp'
@@ -166,6 +168,8 @@ jobs:
           /tmp/diffusion_study receipts/diffusion- | tee receipts/diffusion-test.txt
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/diffusion_memory_test.cpp -o /tmp/diffusion_memory_test
           /tmp/diffusion_memory_test receipts/diffusion-memory- | tee receipts/diffusion-memory-test.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Iinclude tests/biolume_test.cpp -o /tmp/biolume_test
+          /tmp/biolume_test receipts/biolume- | tee receipts/biolume-test.txt
           mkdir -p receipts/five-modes
           g++ -std=c++17 -O2 -ffp-contract=off -Wall -Wextra -Werror -Iinclude tests/visual_002_test.cpp -o /tmp/visual_002_test
           /tmp/visual_002_test receipts/five-modes | tee receipts/host-visual-002.txt

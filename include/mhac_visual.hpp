@@ -10,6 +10,7 @@
 #include "mhac_ink.hpp"
 #include "mhac_cellular.hpp"
 #include "mhac_diffusion.hpp"
+#include "mhac_biolume.hpp"
 #include "mhac_scale.hpp"
 #include "mhac_trace.hpp"
 #include "mhac_gesture.hpp"
@@ -200,6 +201,10 @@ inline uint16_t pixelAt(const Frame& f,int x,int y,LatticeCursor cursor) noexcep
         r=s.r;g=s.g;b=s.b;
     } else if(f.mode==diffusion_mode) { // Diffusion: two-species generative medium.
         const auto s=f.diffusion?f.diffusion->shade(x,y):DiffusionField::Shade{4,9,18};
+        r=s.r;g=s.g;b=s.b;
+    } else if(f.mode==biolume_mode) { // Biolume: persistent pigment and artistic light sheets.
+        const int pigment=f.diffusion?f.diffusion->shade(x,y).g:9;
+        const auto s=biolumeShade(x,y,px,py,pigment,a,ph,t);
         r=s.r;g=s.g;b=s.b;
     } else { // Trace: observed PCM feature history, not spectral bands.
         const auto s=f.trace?f.trace->shade(x,y):Trace::Shade{5,8,15};

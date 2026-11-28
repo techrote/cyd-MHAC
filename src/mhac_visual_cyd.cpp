@@ -119,7 +119,7 @@ void mhac_ui_tick() {
         if(mhac::exchange.features.read(latest)) trace.observe(latest,now);
         frame={active,ui.mode(),mhac::exchange.snapshot(),now/25,ui.watchdogLatched(),&ink,ui.scale(),&trace,trace.fresh(now),ui.loopState(),ui.factoryIndex(),ui.factoryAudition(),ui.palette(),ui.mapping(),&cellular,&diffusion,ui.loopStyle(),ui.loopPreview()};
         cellular.advance(now,frame.mode==cellular_mode,frame.control.x,frame.control.y,frame.control.gate&&!frame.control.mute,frame.analysis&4095u);
-        diffusion.advance(now,frame.mode==diffusion_mode,frame.control.x,frame.control.y,frame.control.gate&&!frame.control.mute,frame.analysis&4095u);
+        diffusion.advance(now,usesDiffusion(frame.mode),frame.control.x,frame.control.y,frame.control.gate&&!frame.control.mute,frame.analysis&4095u);
         if(frame.mode==5) ink.advance(now,frame.control.x,frame.control.y,frame.control.gate&&!frame.control.mute,frame.analysis&4095u);
     }
     const uint32_t start=micros();

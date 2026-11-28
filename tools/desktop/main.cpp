@@ -82,7 +82,7 @@ struct UI {
         Frame f{c,surface.mode(),audio.exchange.snapshot(),now/25,surface.watchdogLatched(),
                 &ink,surface.scale(),&trace,trace.fresh(now),surface.loopState(),surface.factoryIndex(),surface.factoryAudition(),surface.palette(),surface.mapping(),&cellular,&diffusion,surface.loopStyle(),surface.loopPreview()};
         cellular.advance(now,f.mode==cellular_mode,c.x,c.y,c.gate&&!c.mute,f.analysis&4095u);
-        diffusion.advance(now,f.mode==diffusion_mode,c.x,c.y,c.gate&&!c.mute,f.analysis&4095u);
+        diffusion.advance(now,usesDiffusion(f.mode),c.x,c.y,c.gate&&!c.mute,f.analysis&4095u);
         if(f.mode==5) ink.advance(now,c.x,c.y,c.gate&&!c.mute,f.analysis&4095u);
         return f;
     }

@@ -3,7 +3,8 @@
 #include <cstdlib>
 #include "mhac_audio.hpp"
 namespace mhac::visual {
-constexpr unsigned mode_count=12, sound_count=10, chime_mode=7, caustic_mode=8, quotation_mode=9, cellular_mode=10, diffusion_mode=11;
+constexpr unsigned mode_count=13, sound_count=10, chime_mode=7, caustic_mode=8, quotation_mode=9, cellular_mode=10, diffusion_mode=11, biolume_mode=12;
+constexpr bool usesDiffusion(unsigned mode) noexcept { return mode==diffusion_mode || mode==biolume_mode; }
 constexpr unsigned paired_mode[sound_count]={0,1,4,3,2,5,chime_mode,quotation_mode,quotation_mode,caustic_mode};
 inline constexpr const char* sound_names[sound_count]={"Phase Morph","Harmonic Lattice","Ring Dialect","Detuned Swarm","Erasure Pulse","Recursive Echo","Modal Chime","Quotation","Counterquotation","Formant Reed"};
 constexpr const char* soundName(unsigned p) noexcept { return p<sound_count?sound_names[p]:"Phase Morph"; }
